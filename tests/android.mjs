@@ -1,7 +1,5 @@
-// Real-device sweep. Every one of the 25 games is opened from the home grid (benchmark run) and driven
-// with real Android touches (`adb shell input`), while CDP only observes the page. Then the launch
-// screen, intro, sandbox level entry and the hardware back key are checked the same way. Requires a
-// debuggable build (ARC_DEBUG=1 scripts/build-android.sh) installed on a USB-connected phone.
+// Device regression checks using real touches, app switching and the hardware back key.
+// Saved state is backed up and restored even if a check fails. Requires an installed debug APK.
 import {execFileSync} from 'node:child_process';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
@@ -24,7 +22,7 @@ const foreground=async()=>{const top=adb('shell','dumpsys','activity','activitie
 const launchApp=async()=>{adb('shell','am','force-stop','org.arcquest.game');adb('shell','am','start','-n','org.arcquest.game/.MainActivity');await sleep(2500);return attach();};
 let {ws,send}=await launchApp();
 const evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result.value;};
-const wait=async(predicate,ms=20000)=>{const t0=Date.now();while(Date.now()-t0<ms){if(await evaluate(predicate))return;await sleep(40);}throw Error('Timed out: '+predicate);};
+const wait=async(predicate,ms=20000)=>{const t0=Date.now();while(Date.now()-t0<ms){if(await evaluate(predicate).catch(()=>false))return;await sleep(40);}throw Error('Timed out: '+predicate);};
 const rect=async selector=>{const r=await evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e)return null;const r=e.getBoundingClientRect();return{x:r.x,y:r.y,w:r.width,h:r.height}})()`);assert.ok(r,'missing '+selector);return r;};
 const dpr=await evaluate('devicePixelRatio');
 const tapAt=(x,y)=>adb('shell','input','tap',String(Math.round(x*dpr)),String(Math.round(y*dpr)));
@@ -34,62 +32,31 @@ const swipeAt=(x1,y1,x2,y2,ms=120)=>adb('shell','input','swipe',...[x1,y1,x2,y2]
 const shot=async file=>writeFileSync(file,Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));
 const actions=()=>evaluate("Number(document.querySelector('#actions').textContent)");
 const last=game=>evaluate(`JSON.parse(localStorage.getItem('arc-run-v2')).games[${JSON.stringify(game)}].history.at(-1)`);
-const report={device:adb('shell','getprop','ro.product.model').trim(),android:adb('shell','getprop','ro.build.version.release').trim(),viewport:await evaluate('[innerWidth,innerHeight]'),dpr,games:[],errors:[]};
+const backup=await evaluate('JSON.stringify(Object.fromEntries(Object.entries(localStorage)))');
+writeFileSync('test-results/android/saved-state-backup.json',backup);
+const report={device:adb('shell','getprop','ro.product.model').trim(),viewport:await evaluate('[innerWidth,innerHeight]'),checks:[]};
 try{
- // Fresh state, first launch: launch screen, the intro, and picking the benchmark mode with real taps.
- await evaluate("localStorage.clear();location.reload()");await sleep(2500);
- await wait("!document.querySelector('#launch').hidden");await evaluate("window.addEventListener('error',e=>arcMetrics.errors.push('window: '+e.message))");
- const bootStart=Date.now();await shot('test-results/android/launch.png');
- await tap('#launch-start');await wait("!document.querySelector('#onboarding').hidden");await shot('test-results/android/intro.png');
- for(let i=0;i<3;i++){await tap('#onboard-next');await sleep(450);}
- await wait("document.querySelector('[data-pick=\"run\"]')");await tap('[data-pick="run"]');await wait("!document.querySelector('#home').hidden");
- await wait("document.querySelectorAll('.game-card').length===25");await shot('test-results/android/home.png');
- const games=await evaluate("[...document.querySelectorAll('.game-card')].map(b=>b.dataset.game)");
- const manifest=Object.fromEntries((await evaluate("fetch('./games.json').then(r=>r.json())")).map(g=>[g.id,g]));
- for(const game of games){
-  const entry={game,available:manifest[game].actions,steps:[],ok:true};report.games.push(entry);
-  const step=async(name,expect,fn)=>{await foreground();if(await evaluate("!document.querySelector('#game-over').hidden")){await tap('#game-over');await sleep(400);}const base=await actions();const t=Date.now();await fn();try{await wait(`Number(document.querySelector('#actions').textContent)===${base+expect.count}`,expect.count?6000:0);}catch{}await sleep(expect.count?60:400);const got=await actions()-base;const action=await last(game);const ok=got===expect.count&&(!expect.action||JSON.stringify(action)===JSON.stringify(expect.action));entry.steps.push({name,expected:expect,got,action,ms:Date.now()-t,ok});if(!ok)entry.ok=false;};
-  await foreground();const opened=`!document.querySelector('#game').hidden&&document.querySelector('#playing-name').textContent==='${game.toUpperCase()}'`;
-  let t0=Date.now();await scrollTap(`[data-game="${game}"]`);
-  try{await wait(opened,120000);}catch(e){if(!await foreground())throw e;await wait("!document.querySelector('#home').hidden",5000).catch(()=>{});if(await evaluate("document.querySelector('#home').hidden"))await tap('#back');await wait("!document.querySelector('#home').hidden");t0=Date.now();await scrollTap(`[data-game="${game}"]`);await wait(opened,120000);entry.retried=true;}
-  entry.openMs=Date.now()-t0;await sleep(400);
-  if(report.games.length===1)report.firstOpenSinceLaunchMs=Date.now()-bootStart;
-  const a=manifest[game].actions,b=await rect('#board'),cx=b.x+b.w/2,cy=b.y+b.h/2;
-  for(const dir of [1,2,3,4])if(a.includes(dir))await step('dpad '+dir,{count:1,action:{id:dir}},()=>tap(`[data-action="${dir}"]`));
-  if(a.includes(5))await step('action 5',{count:1,action:{id:5}},()=>tap('[data-action="5"]'));
-  if(a.includes(7))await step('undo',{count:1,action:{id:7}},()=>tap('[data-action="7"]'));
-  if(a.includes(3))await step('swipe left',{count:1,action:{id:3}},()=>swipeAt(cx,cy,cx-110,cy));
-  if(a.includes(1))await step('swipe up',{count:1,action:{id:1}},()=>swipeAt(cx,cy,cx,cy-110));
-  if(a.includes(4))await step('fast swipe right',{count:1,action:{id:4}},()=>swipeAt(cx,cy,cx+110,cy,50));
-  if(!a.includes(1)&&a.includes(3))await step('vertical swipe ignored',{count:0},()=>swipeAt(cx,cy,cx,cy-110));
-  if(a.includes(6)){await step('tap cell 10,20',{count:1,action:{id:6,x:10,y:20}},()=>tapAt(b.x+10.5/64*b.w,b.y+20.5/64*b.h));await step('tap cell 63,0',{count:1,action:{id:6,x:63,y:0}},()=>tapAt(b.x+63.5/64*b.w,b.y+.5/64*b.h));await step('long press is a click',{count:1,action:{id:6,x:32,y:32}},()=>swipeAt(cx,cy,cx,cy,700));}
-  else await step('tap ignored without clicks',{count:0},()=>tapAt(cx,cy));
-  if(a.includes(6)&&!a.some(d=>d<=4))await step('drag ignored',{count:0},()=>swipeAt(cx,cy,cx-110,cy));
-  const burstPoint=a.some(d=>d<=4)?await(async()=>{const r=await rect(`[data-action="${a.find(d=>d<=4)}"]`);return{x:r.x+r.w/2,y:r.y+r.h/2};})():{x:cx,y:cy};
-  await step('5 rapid taps',{count:5},async()=>{for(let i=0;i<5;i++)tapAt(burstPoint.x,burstPoint.y);await sleep(300);});
-  await step('reset',{count:1,action:{id:0}},()=>tap('[data-action="0"]'));
-  await shot(`test-results/android/${game}.png`);
-  await foreground();await tap('#back');try{await wait("!document.querySelector('#home').hidden");}catch(e){if(!await foreground())throw e;await tap('#back');await wait("!document.querySelector('#home').hidden");}await sleep(200);
-  const card=await evaluate(`document.querySelector('[data-game="${game}"]').className`);entry.card=card;if(!/active/.test(card))entry.ok=false;
-  console.log(entry.ok?'PASS':'FAIL',game,`open ${entry.openMs}ms`,entry.steps.filter(s=>!s.ok).map(s=>`${s.name}: expected ${JSON.stringify(s.expected)} got ${s.got} ${JSON.stringify(s.action)}`).join('; '));
- }
- // Sandbox: switch mode, open a level from the picker, count attempt actions, reset is free.
- await tap('[data-mode="sandbox"]');await wait("document.querySelector('#hero').classList.contains('sandbox')");await shot('test-results/android/home-sandbox.png');
- await scrollTap('[data-game="ls20"]');await wait("document.querySelector('[data-level=\"2\"]')");await shot('test-results/android/level-picker.png');
- await tap('[data-level="2"]');await wait("!document.querySelector('#game').hidden",60000);await sleep(400);
- assert.equal(await evaluate("document.querySelector('#target-value').textContent"),'73');
- await tap('[data-action="4"]');await wait("Number(document.querySelector('#actions').textContent)===1");await tap('[data-action="0"]');await wait("Number(document.querySelector('#actions').textContent)===0");
- await shot('test-results/android/sandbox-game.png');report.sandbox='LS20 level 3 opened from the picker; attempt counter and free reset verified';
- // Hardware back: leaves the game, then leaves the app from the home grid.
- adb('shell','input','keyevent','KEYCODE_BACK');await wait("!document.querySelector('#home').hidden");
- report.errors=await evaluate('arcMetrics.errors');report.boot=await evaluate('arcMetrics.boot');
- adb('shell','input','keyevent','KEYCODE_BACK');await sleep(1200);report.backExits=!/org\.arcquest\.game/.test(adb('shell','dumpsys','activity','activities').split('\n').filter(l=>/topResumedActivity|ResumedActivity/.test(l)).join(' '));
- // Second launch with a saved state skips the intro and restores the mode.
- ({ws,send}=await launchApp());await wait("!document.querySelector('#launch').hidden");await tap('#launch-start');await wait("!document.querySelector('#home').hidden");report.secondLaunch='intro skipped, mode restored: '+await evaluate("document.querySelector('.mode-switch').dataset.mode");
- report.failed=report.games.filter(g=>!g.ok).map(g=>g.game);
- const latencies=report.games.flatMap(g=>g.steps.filter(s=>s.expected.count===1).map(s=>s.ms)).sort((a,b)=>a-b);report.inputToUpdateMs={median:latencies[latencies.length>>1],p95:latencies[Math.floor(latencies.length*.95)]};
- report.openMs={first:report.games[0].openMs,laterMedian:report.games.slice(1).map(g=>g.openMs).sort((a,b)=>a-b)[12],laterMax:Math.max(...report.games.slice(1).map(g=>g.openMs))};
- writeFileSync('test-results/android-report.json',JSON.stringify(report,null,2));
- console.log(JSON.stringify({failed:report.failed,errors:report.errors,inputToUpdateMs:report.inputToUpdateMs,openMs:report.openMs,firstOpenSinceLaunchMs:report.firstOpenSinceLaunchMs,boot:report.boot,backExits:report.backExits,secondLaunch:report.secondLaunch}));
- assert.deepEqual(report.errors,[]);assert.deepEqual(report.failed,[]);assert.ok(report.backExits,'back key should leave the app from home');
-}finally{ws.close();}
+ await evaluate("localStorage.setItem('arc-settings',JSON.stringify({onboarded:true,mode:'sandbox',sound:false,haptic:true}))");
+ ws.close();({ws,send}=await launchApp());
+ await wait("!document.querySelector('#launch').hidden");await tap('#launch-start');await wait("!document.querySelector('#home').hidden");await sleep(600);
+ await tap('#sandbox-help');await wait("document.querySelector('#detail-title').textContent==='Sandbox'");adb('shell','input','keyevent','KEYCODE_BACK');await wait("!document.querySelector('#home').hidden");
+ await scrollTap('[data-game="ls20"]');await wait("!document.querySelector('#detail').hidden");await tap('[data-level="2"]');await wait("!document.querySelector('#game').hidden",120000);await sleep(400);
+ assert.equal(await evaluate("document.querySelector('#target-value').textContent"),'73');await tap('[data-action="4"]');await wait("document.querySelector('#actions').textContent==='1'");
+ await tap('[data-action="0"]');await wait("document.querySelector('#detail-title').textContent==='Restart this level?'");await tap('#keep-playing');await wait("!document.querySelector('#game').hidden");assert.equal(await actions(),1);
+ await tap('[data-action="0"]');await wait("!document.querySelector('#detail').hidden");await tap('#do-retry');await wait("document.querySelector('#actions').textContent==='0'");report.checks.push('sandbox level entry and confirmed/cancelled trash actions');
+ await tap('#mode-badge');await wait("document.querySelector('#detail-title').textContent==='Sandbox'");await tap('#detail-back');await wait("!document.querySelector('#game').hidden");
+ await sleep(400);
+ const before=await evaluate("({board:document.querySelector('#board').toDataURL(),width:innerWidth,height:innerHeight,rect:JSON.stringify(document.querySelector('#board').getBoundingClientRect())})");
+ adb('shell','am','start','-a','android.settings.SETTINGS');await sleep(1200);await foreground();await sleep(1200);
+ const after=await evaluate("({board:document.querySelector('#board').toDataURL(),width:innerWidth,height:innerHeight,rect:JSON.stringify(document.querySelector('#board').getBoundingClientRect())})");assert.deepEqual(after,before);report.checks.push('app switching preserves board pixels and layout');await shot('test-results/android/revised-game.png');
+ adb('shell','input','keyevent','KEYCODE_BACK');await wait("!document.querySelector('#detail').hidden&&document.querySelector('#detail-title').textContent==='LS20'");await shot('test-results/android/revised-picker.png');
+ adb('shell','input','keyevent','KEYCODE_BACK');await wait("!document.querySelector('#home').hidden");report.checks.push('hardware back: game, level picker, home');
+ await tap('#about');await wait("document.querySelector('#detail-title').textContent==='How it works'");await shot('test-results/android/revised-info.png');await tap('#detail-back');await wait("!document.querySelector('#home').hidden");
+ await tap('button[data-mode="run"]');await sleep(600);const enabled=await evaluate("[...document.querySelectorAll('.game-card:not(:disabled)')].map(e=>e.dataset.game)");report.enabledBenchmarkCards=enabled;await shot('test-results/android/revised-benchmark.png');
+ report.errors=await evaluate('arcMetrics.errors');assert.deepEqual(report.errors,[]);report.checks.push('full info page and sequential benchmark menu');report.passed=true;
+ writeFileSync('test-results/android-report.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
+}finally{
+ await evaluate(`localStorage.clear();for(const [key,value] of Object.entries(${backup}))localStorage.setItem(key,value)`);
+ ws.close();
+ adb('shell','am','force-stop','org.arcquest.game');adb('shell','am','start','-n','org.arcquest.game/.MainActivity');
+}

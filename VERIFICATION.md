@@ -1,48 +1,46 @@
-# Verification — 7 September 2026
+# Verification
 
-## Original game and grading parity
+Verified 2026-09-08. The original checkout is preserved in commit `6dd0b23`.
 
-- **25 / 25 original public environments**, **183 levels**, pinned by version and SHA-256 in `public/games.json` (unchanged by this revision; only precompiled bytecode was added next to the sources).
-- **825 differential states**: the browser WebAssembly runtime matched the installed official Python SDK on final pixel frames, game states, completed levels, action counts, resets, per-level action totals, per-level scores, and game score (`node tests/parity.mjs`, run again after the bytecode change).
-- **5 / 5 scoring unit tests** (`npm test`).
-- **183 / 183 sandbox level entries** (`node tests/levels.mjs`): every level of every game opens directly through the bridge, renders a 64 × 64 frame in state NOT_FINISHED at that level index, differs from level 1’s first frame, and a reset stays on that level.
-- **FT09 complete playthrough** in the benchmark run: six levels, **75 actions**, **100%**, exported scorecard verified. The same solver clears FT09 level 1 in the sandbox under the human count (gold). The solver is test-only and never shipped.
-- Original `arcengine` files, all 25 game sources, and the SDK’s scoring/model modules are bundled unchanged. Sandbox entry uses the engine’s own `set_level` followed by a level reset; benchmark runs still use the official `Scorecard`.
+Review builds: [web](https://apps.muxu.click/d/q92ci9g2) · [Android APK](https://apps.muxu.click/d/a7wj7334).
 
-## Loading time
+## Current behavior
 
-Measured on the Moto G7 Power inside the app (`arcMetrics.boot`), engine worker start to `ready`:
+- Sandbox is the first tab and the default for new players. Every game and level is available there. Benchmark only allows the first unfinished game; completed games open their scorecards.
+- Level selection, results, lab help, info, scorecards and restart confirmations are full screens with a top-left back button. Returning restores the parent screen's handlers and scroll position. The info control has no attention animation.
+- Each sandbox level has its own initial-board preview. All ten levels of LF52 fit without scrolling at every tested size. The picker shows “Not Cleared,” a personal best or a medal. A numerical gold target appears only after a completed attempt above that target.
+- Removed per-game corner counters and percentages, redundant cleared/gold prose and the picker explanation. Benchmark progress reads “% complete” and means levels cleared / 183. In-game “game score” is the official action-efficiency score, not completion or rank.
+- The home trophy stays hidden until a full run is completed. Partial/deleted runs never become records. Completed records survive run deletion.
+- Red trash controls ask for confirmation. A benchmark retry adds one action; a sandbox retry starts a new attempt. Blue/white sound and haptic toggles use distinct on/off icons and persist.
+- App suspension clears gestures, finishes finite UI animations and redraws the final engine frame. Stable Android layout flags prevent system-bar resizing during app switching.
 
-- Before: **18.3 s** (Python runtime 9.3 s, packages 2.8 s, bridge imports 6.2 s), then 0.8 to 1.3 s to open each game for the first time.
-- After: **10.0 s** to ready, all 25 game modules pre-imported in idle time right after, later game opens **median 0.39 s, max 0.62 s** measured around a real tap (which itself includes about 0.2 s of `adb` input latency). The remaining boot is WebAssembly compilation and interpreter start, which cannot be cached in the WebView.
-- What changed: precompiled `.pyc` bytecode (unchecked-hash) shipped inside `engine.zip`, the pure-Python wheels, and the 147 stdlib modules a boot touches; wheels and archive fetched in parallel with the runtime; games imported one per idle macrotask after `ready`. Download grows by 4.6 MB (17.7 → 22.3 MB), cached by the service worker after the first visit.
-- The engine now boots from the launch screen. On a first run the intro takes longer than the boot; in the sweep the first game opened 8.8 s after the launch screen appeared, 2.8 s of which was waiting for the engine after the intro was tapped through quickly. On later runs the launch screen’s progress bar shows the warm-up, and a game tapped before it finishes shows the loading sheet for the remainder.
-- Desktop Chromium (headless, median of 6): ready 2.99 s → 1.35 s; first cold open of the largest game (ka59) 98 ms → 24 ms.
+## Public diamond records
 
-## Interface (this revision)
+Source: [ARC3.Games](https://arc3.games/) and its [public API](https://arc3.games/api/), retrieved 2026-09-08. It supplies shortest recorded action sequences per level, keyed by exact game version.
 
-- Launch screen: an animated 6 × 6 puzzle that keeps recolouring itself, the logo, and a breathing “TAP TO START”, with the engine progress bar underneath.
-- First-run intro: four pages (what the games are, controls, scoring, mode choice) with animated illustrations, dots, skip, and a back key that steps back a page. Replayable from the info sheet.
-- Modes: **Benchmark** (one run, official grading, continue from the hero card, reset-and-archive with confirmation, best past run shown) and **Sandbox** (level picker per game, free resets, attempt counter, human target, gold at or under the human count, cleared/gold totals in the hero). Cards show a segment per level; won games and fully gold games get badges.
-- Removed text: the level pill in the game header and the level/count captions on cards; the segment bars carry that. The launcher icon is now an adaptive icon (background, foreground and monochrome layers), so the launcher no longer masks the old square into a shrunken circle.
-- Animations: staggered card pop-in, hero score count-up, confetti on cleared levels and wins, sliding mode switch, sheet pop-in, a periodic wiggle on the info chip, page transitions in the intro. All respect reduced-motion.
+- **76 / 183 levels** have public records for the bundled versions; all 76 sequences were replayed successfully against the unmodified engines.
+- **107 levels** have no matching public entry. Their target is explicitly `null`; they cannot receive a diamond from this snapshot. Targets are never fabricated or substituted from another game version.
+- Match or beat a recorded count to qualify. Diamonds appear only after all 183 sandbox levels have gold; earlier personal bests are included automatically.
+- These are community records, not proofs of mathematical optimality. The source/date and counts ship offline in `public/diamonds.json`. Replay sequences stay in ignored test evidence.
+- `uv run scripts/update-diamonds.py` refreshes the snapshot; it handles API rate limits and resumes cached reads. Delete its ignored fetch cache to refresh every level from scratch. `uv run tests/leaderboard_replay.py` checks the resulting sequences.
 
-## Browser integration (`npm run test:browser`, Chromium, 390 × 844 touch)
+## Checks passed
 
-Passed: launch and intro, mode choice, rapid touch input with no dropped or doubled actions, reset in the control row costing one action, swipe on a d-pad game, swipe versus click in a mixed game (dc22), vertical swipes ignored in a left/right-only game (bp35), game-over overlay and retry (tu93), back to home and run restore after reload, the FT09 win with badge and 4.0% run average, resetting the run archives it as the best run, sandbox level entry with target and level marker, sandbox gold clear with next-level and the “next uncleared” hero button, the level picker, score export, and a cold offline reload after service-worker caching. No JavaScript errors.
+| Check | Evidence |
+| --- | --- |
+| JavaScript syntax and whitespace | `node --check` on changed modules; `git diff --check` |
+| Scoring and progress rules | `npm test`: 1,000 official scoring fixtures, benchmark ordering, complete-only records, version matching, hidden/retroactive diamond awards and current-attempt ratings |
+| Touch browser integration | `npm run test:browser`: controls, swipe versus tap, cancel/confirm restart, reload persistence, next-game restriction, nested back, conditional gold targets, settings, record visibility, diamond unlock, export and offline cold reload |
+| Full game | FT09: six levels, 75 actions, 100% official game score, played through the browser |
+| Layouts | 320×568, 360×640, 390×844, 430×932, 844×390, 768×1024, 1440×900; all ten picker cards fit; game controls stay on screen; info header stays fixed while content scrolls |
+| Public records | `uv run tests/leaderboard_replay.py`: all 76 retrieved solutions clear the expected level in exactly the recorded count |
+| Android device | Moto G7 Power, Android 15, 360×760 CSS viewport: real touches, restart/cancel, lab/info, hardware back, and app-switch board pixels/layout; no JavaScript errors |
+| Packaging | Offline static build and signed Android APK; release build has WebView debugging disabled |
 
-All home and game controls fit without page scrolling at 320 × 568, 360 × 640, 360 × 760, 390 × 844, 430 × 932, 844 × 390 (landscape), 768 × 1024, and 1440 × 900, checked with the game that has the most controls (ar25).
+Device checks use a debug APK, back up local storage and restore it afterward. Evidence is in ignored `test-results/`; README screenshots are committed in `docs/screenshots/`. Progress used for screenshot examples and the complete-run/diamond UI tests is explicitly seeded fixture data. FT09 gameplay and public-record replay checks execute real engines.
 
-## Physical device sweep (`node tests/android.mjs`)
+## Scope
 
-- Device: **Moto G7 Power**, Android 15, 360 × 760 CSS viewport at 2× density, Android System WebView.
-- From a cleared state with real taps: launch screen, the four intro pages, benchmark chosen; then **25 / 25 games passed** with the same per-game control checks as before (each d-pad button, action 5, undo, swipes, taps at exact cells, long press, ignored gestures, five rapid taps, reset, back), no unexpected or missing actions, no JavaScript errors.
-- Sandbox on the device: mode switch, LS20 level 3 opened from the picker with target 73, attempt counter, free reset. Hardware back leaves a game, then leaves the app from home. A second launch skips the intro and restores the last mode.
-- The phone was shared with another agent that twice launched a different app over ARC Quest during the sweep; the sweep now re-foregrounds ARC Quest before each step, and the WebView state survived both interruptions.
-- Screenshots of every game and screen are in `test-results/android/`. The published APK disables WebView inspection; the sweep used a debug build.
+No upstream games, baselines, palette, bridge or scoring modules were changed. Per-level thumbnails were rendered from all 183 original initial frames with the same reset/seed convention as sandbox. The baseline commit contains the earlier 25-game parity and 183-level entry checks; those engines are unchanged in this revision.
 
-## Packaging and limits
-
-The Android artifact is a self-contained WebView application with a bundled WebAssembly/Python worker, not a native rewrite of ARC’s engines. Its assets load from an intercepted local HTTPS origin. Android 8+ with a current System WebView is required. The APK (15 MB) has no gameplay server dependency and uses a local review signing key.
-
-Sandbox levels start from the engine’s clean copy of that level; games whose later levels depend on state carried from earlier levels are played as the engine presents them from a level reset. Benchmark scores are **local practice scores**, not official leaderboard submissions. Differential tests cover all environments’ sampled states; a full winning path was verified for FT09, not all 183 levels. No claim is made about undisclosed/private ARC-AGI-3 games.
+The Android app is a bundled WebView/Python WebAssembly game, requiring Android 8+ and a current System WebView. Web offline play requires one successful cache installation. Scores are local practice, not official submissions. This verifies the public game set only.

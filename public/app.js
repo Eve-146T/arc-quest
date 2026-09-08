@@ -1,3 +1,4 @@
+import {sandboxRating, allGold, nextRunGame, completedRecord} from './progress.js';
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const icon = (name, cls = '') => `<svg class="icon ${cls}" aria-hidden="true"><use href="#${name}"/></svg>`;
 const safeRead = (key, fallback) => {try {return JSON.parse(localStorage.getItem(key)) ?? fallback;} catch {return fallback;}};
@@ -6,8 +7,8 @@ const ARC = ['#FFFFFF', '#CCCCCC', '#999999', '#666666', '#333333', '#000000', '
 const CANDY = ['#1E93FF', '#FFDC00', '#4FCC30', '#F93C31', '#A356D6', '#FF851B', '#88D8F1', '#E53AA3', '#2EE6A6'];
 
 // ---- persistent state
-let settings = {sound: false, haptic: true, onboarded: false, mode: 'run', ...safeRead('arc-settings', {})};
-if (!['run', 'sandbox'].includes(settings.mode)) settings.mode = 'run';
+let settings = {sound: false, haptic: true, onboarded: false, mode: 'sandbox', ...safeRead('arc-settings', {})};
+if (!['run', 'sandbox'].includes(settings.mode)) settings.mode = 'sandbox';
 // One benchmark run at a time: per game, the action history and the official summary.
 let run = safeRead('arc-run-v2', null);
 if (!run) {
@@ -18,7 +19,7 @@ if (!run) {
 let pastRuns = safeRead('arc-runs-v1', []); // archived runs: {score, levels, actions, endedAt}
 let sandbox = safeRead('arc-sandbox-v1', {}); // {gameId: {levelIndex: bestActions}}
 
-let games = [], worker, ready = false, bootError = null, requestId = 0, pending = new Map();
+let diamonds = {}, games = [], worker, ready = false, bootError = null, requestId = 0, pending = new Map();
 let state = null, playing = false, loadingGame = false, sessionId = null, framesToken = 0;
 let session = null; // {game, level, sandbox, attempt}
 const metrics = {latencies: [], inputCount: 0, errors: [], boot: {}};
@@ -41,7 +42,7 @@ function feedback(win = false) {
 function updateSettings() {
   save('arc-settings', settings);
   $$('.sound-toggle').forEach(b => {b.innerHTML = icon(settings.sound ? 'sound-on' : 'sound-off'); b.setAttribute('aria-pressed', String(settings.sound)); b.setAttribute('aria-label', `Turn sound ${settings.sound ? 'off' : 'on'}`);});
-  $$('.haptic-toggle').forEach(b => {b.classList.toggle('muted-setting', !settings.haptic); b.setAttribute('aria-pressed', String(settings.haptic)); b.setAttribute('aria-label', `Turn vibration ${settings.haptic ? 'off' : 'on'}`);});
+  $$('.haptic-toggle').forEach(b => {b.innerHTML = icon(settings.haptic ? 'vibrate' : 'vibrate-off'); b.setAttribute('aria-pressed', String(settings.haptic)); b.setAttribute('aria-label', `Turn vibration ${settings.haptic ? 'off' : 'on'}`);});
 }
 function confetti(n = 28) {
   if (reduced) return;
@@ -62,8 +63,15 @@ function countUp(el, to, decimals = 1, suffix = '') {
 }
 
 // ---- screens
-const screens = ['launch', 'onboarding', 'home', 'game'];
-function show(name) {for (const s of screens) $('#' + s).hidden = s !== name; if (name !== 'launch') clearInterval(launchTimer);}
+const screens = ['launch', 'onboarding', 'home', 'game', 'detail'];
+let screenName = 'launch', detailStack = [], detailReturn = null;
+function show(name, back = false) {
+  const changed = screenName !== name;
+  screenName = name;
+  for (const s of screens) $('#' + s).hidden = s !== name;
+  if (name !== 'launch') clearInterval(launchTimer);
+  if (changed && !reduced) $('#' + name).animate([{opacity: .3, transform: `translateX(${back ? -18 : 18}px)`}, {opacity: 1, transform: 'none'}], {duration: 200, easing: 'ease-out'});
+}
 
 // Launch: a 6×6 puzzle that solves itself while the engine warms up.
 function launch() {
@@ -105,7 +113,7 @@ const runActions = () => games.reduce((a, g) => a + (runGame(g.id)?.summary?.act
 const totalLevels = () => games.reduce((a, g) => a + g.levels, 0);
 const runStarted = () => Object.values(run.games).some(g => g.history?.length);
 const isWon = id => runGame(id)?.summary?.state === 'WIN';
-const bestRun = () => pastRuns.reduce((b, r) => r.score > (b?.score ?? -1) ? r : b, null);
+const bestRun = () => completedRecord(games, run, pastRuns, runScore());
 const sandboxBest = (id, level) => sandbox[id]?.[level];
 const isGold = (id, level) => sandboxBest(id, level) != null && sandboxBest(id, level) <= gameOf(id).baseline[level];
 const sandboxCleared = () => games.reduce((a, g) => a + Object.keys(sandbox[g.id] ?? {}).length, 0);
@@ -114,9 +122,10 @@ const sandboxGold = () => games.reduce((a, g) => a + g.baseline.filter((_, i) =>
 function segments(cls, levels, classOf, extra = '') {return `<span class="segments ${cls}" aria-hidden="true">${Array.from({length: levels}, (_, i) => `<i class="${classOf(i)}"></i>`).join('')}${extra}</span>`;}
 
 function home() {
-  closeDialog(); playing = false; framesToken++; pointer = null; show('home');
+  closeDetails(); playing = false; framesToken++; pointer = null; show('home', true);
   $('.mode-switch').dataset.mode = settings.mode; $$('.mode-switch [data-mode]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === settings.mode)));
-  $('#best-score').innerHTML = `${(bestRun()?.score ?? runScore()).toFixed(1)}<small>%</small>`;
+  const best = bestRun(); $('#record').hidden = !best;
+  $('#best-score').innerHTML = best ? `${best.score.toFixed(1)}<small>%</small>` : '';
   renderHero(); renderGrid();
 }
 function renderHero() {
@@ -124,15 +133,16 @@ function renderHero() {
   if (settings.mode === 'run') {
     const best = bestRun(), levels = runLevels(), started = runStarted();
     hero.className = 'hero run';
-    hero.innerHTML = `<div class="hero-top"><span class="hero-label">${started ? 'CURRENT RUN' : 'NEW RUN'}</span>${best ? `<span class="hero-best">${icon('trophy')}Best ${best.score.toFixed(1)}%</span>` : ''}</div><div class="hero-score"><b id="run-score">0.0</b><small>%</small></div><div class="hero-bar"><i style="width:${(levels / total * 100).toFixed(1)}%"></i></div><div class="hero-meta"><span>${levels} / ${total} levels</span><span>${games.filter(g => isWon(g.id)).length} / ${games.length} games</span></div><div class="hero-actions"><button id="continue-run" class="chunk mint">${icon('play-icon')}${started ? 'CONTINUE RUN' : 'START RUN'}</button>${started ? `<button id="reset-run" class="chip white" aria-label="Reset run">${icon('reset')}</button>` : ''}</div>`;
-    countUp($('#run-score'), runScore());
+    hero.innerHTML = `<div class="hero-top"><span class="hero-label">${started ? 'CURRENT RUN' : 'NEW RUN'}</span>${best ? `<span class="hero-best">${icon('trophy')}Best ${best.score.toFixed(1)}%</span>` : ''}</div><div class="hero-score"><b id="run-score">0.0</b><small>% complete</small></div><div class="hero-bar"><i style="width:${(levels / total * 100).toFixed(1)}%"></i></div><div class="hero-meta"><span>${levels} / ${total} levels</span><span>${games.filter(g => isWon(g.id)).length} / ${games.length} games</span></div><div class="hero-actions"><button id="continue-run" class="chunk mint">${icon('play-icon')}${started ? 'CONTINUE RUN' : 'START RUN'}</button>${started ? `<button id="reset-run" class="chip berry" aria-label="Delete run">${icon('trash')}</button>` : ''}</div>`;
+    countUp($('#run-score'), levels / total * 100);
     $('#continue-run').onclick = () => {feedback(); continueRun();};
     $('#reset-run')?.addEventListener('click', () => {feedback(); confirmResetRun();});
   } else {
     const cleared = sandboxCleared(), gold = sandboxGold();
     hero.className = 'hero sandbox';
-    hero.innerHTML = `<div class="hero-top"><span class="hero-label">SANDBOX</span><span class="hero-best">${icon('star')}${gold} gold</span></div><div class="hero-score"><b id="sandbox-count">0</b><small>/ ${total}</small><span class="unit">LEVELS</span></div><div class="hero-bar"><i class="gold" style="width:${(gold / total * 100).toFixed(1)}%"></i><i style="width:${(cleared / total * 100).toFixed(1)}%;background:#ffd23f80"></i></div><div class="hero-meta"><span>${cleared} cleared</span><span>${gold} at or under human</span></div><div class="hero-actions"><button id="next-level" class="chunk yellow">${icon('play-icon')}${cleared ? 'NEXT UNCLEARED' : 'FIRST LEVEL'}</button></div>`;
+    hero.innerHTML = `<div class="hero-top"><button id="sandbox-help" class="quiet-button" aria-label="About sandbox">${icon('flask')}</button><span class="hero-best">${icon('star')}${gold}</span></div><div class="hero-score"><b id="sandbox-count">0</b><small>/ ${total}</small><span class="unit">LEVELS</span></div><div class="hero-bar"><i class="gold" style="width:${(gold / total * 100).toFixed(1)}%"></i><i style="width:${(cleared / total * 100).toFixed(1)}%;background:#ffd23f80"></i></div><div class="hero-actions"><button id="next-level" class="chunk yellow">${icon('play-icon')}${cleared === total ? 'ALL LEVELS CLEARED' : cleared ? 'NEXT UNCLEARED' : 'FIRST LEVEL'}</button></div>`;
     countUp($('#sandbox-count'), cleared, 0);
+    $('#sandbox-help').onclick = sandboxInfo;
     $('#next-level').onclick = () => {feedback(); const next = firstUncleared(); if (next) playSandbox(next.id, next.level); else notice('Every level is cleared. Chase gold!');};
   }
 }
@@ -142,15 +152,16 @@ function renderGrid() {
     if (settings.mode === 'run') {
       const r = runGame(g.id), done = r?.summary?.levels_completed ?? 0, won = isWon(g.id), active = Boolean(r?.history?.length) && !won;
       cls = won ? 'done' : active ? 'active' : '';
-      badge = won ? `<span class="badge gold">${icon('trophy')}${Math.round(gameScore(g.id))}%</span>` : done ? `<span class="badge">${Math.round(gameScore(g.id))}%</span>` : '';
+      badge = '';
       segs = segments('', g.levels, k => k < done ? 'done' : k === done && active ? 'current' : '');
     } else {
       const golds = g.baseline.filter((_, k) => isGold(g.id, k)).length, cleared = Object.keys(sandbox[g.id] ?? {}).length;
       cls = golds === g.levels ? 'done' : cleared ? 'active' : '';
-      badge = golds === g.levels ? `<span class="badge gold">${icon('star')}</span>` : cleared ? `<span class="badge">${cleared}/${g.levels}</span>` : '';
-      segs = segments('', g.levels, k => isGold(g.id, k) ? 'gold' : sandboxBest(g.id, k) != null ? 'done' : '');
+      badge = '';
+      segs = segments('', g.levels, k => rating(g.id, k) === 'diamond' ? 'diamond' : isGold(g.id, k) ? 'gold' : sandboxBest(g.id, k) != null ? 'done' : '');
     }
-    return `<button class="game-card ${cls}" data-game="${g.id}" style="--i:${i}" aria-label="${g.id.toUpperCase()}, ${g.levels} levels">${badge}<img src="./assets/${g.id}.png" alt="" loading="lazy"><strong>${g.id.toUpperCase()}</strong>${segs}</button>`;
+    const locked = settings.mode === 'run' && !isWon(g.id) && g.id !== nextRunGame(games, run);
+    return `<button ${locked ? 'disabled' : ''} class="game-card ${cls}${locked ? ' locked' : ''}" data-game="${g.id}" style="--i:${i}" aria-label="${g.id.toUpperCase()}, ${g.levels} levels">${badge}<img src="./assets/${g.id}.png" alt="" loading="lazy"><strong>${g.id.toUpperCase()}</strong>${segs}</button>`;
   }).join('');
   $$('[data-game]').forEach(b => b.addEventListener('click', () => settings.mode === 'run' ? openRunGame(b.dataset.game) : levelPicker(b.dataset.game)));
 }
@@ -160,34 +171,47 @@ $$('.mode-switch [data-mode]').forEach(b => b.onclick = () => setMode(b.dataset.
 // ---- benchmark run
 function openRunGame(id) {
   if (isWon(id)) {runScorecard(id); return;}
-  play({game: id, level: 0, sandbox: false});
+  if (id === nextRunGame(games, run)) play({game: id, level: 0, sandbox: false});
 }
 function continueRun() {
-  const order = [run.lastGame, ...games.map(g => g.id)].filter(Boolean);
-  const next = order.find(id => !isWon(id));
+  const next = nextRunGame(games, run);
   if (next) play({game: next, level: 0, sandbox: false}); else runComplete();
 }
 function runComplete() {
-  modal('Run complete!', `<div class="win-art">${icon('trophy')}</div><div class="score-big">${runScore().toFixed(1)}<small>%</small></div><p class="score-label">${games.length} games · ${runLevels()} levels · ${runActions()} actions</p><div class="dialog-stack"><button id="archive-run" class="chunk mint">${icon('reset')}Save & start a new run</button><button id="see-runs" class="chunk lavender">Your scores</button></div>`);
-  $('#archive-run').onclick = () => {resetRun(); closeDialog(); home();}; $('#see-runs').onclick = () => scorecard();
+  detailPage('Run complete!', `<div class="win-art">${icon('trophy')}</div><div class="score-big">${runScore().toFixed(1)}<small>%</small></div><p class="score-label">${games.length} games · ${runLevels()} levels · ${runActions()} actions</p><div class="dialog-stack"><button id="archive-run" class="chunk mint">${icon('reset')}Save & start a new run</button><button id="see-runs" class="chunk lavender">Your scores</button></div>`);
+  $('#archive-run').onclick = () => {resetRun(); closeDetails(); home();}; $('#see-runs').onclick = () => scorecard();
 }
 function confirmResetRun() {
-  const score = runScore(), scored = runLevels() > 0;
-  modal('Reset your run?', `<div class="dialog-stack"><p class="dialog-note">${scored ? `Your run so far (${score.toFixed(1)}%, ${runLevels()} levels) is saved to your past runs${score > (bestRun()?.score ?? -1) ? ' as your new best' : ''}.` : 'Nothing is scored yet, so there is nothing to save.'} All 25 games start over.</p><button id="do-reset" class="chunk berry">${icon('reset')}Reset run</button><button id="keep-run" class="chunk white">Keep playing</button></div>`);
-  $('#do-reset').onclick = () => {feedback(true); const wasBest = score > (bestRun()?.score ?? -1); resetRun(); closeDialog(); home(); if (wasBest && score > 0) {confetti(); notice('New best run saved!');}};
-  $('#keep-run').onclick = closeDialog;
+  detailPage('Delete this run?', `<div class="dialog-stack"><p class="dialog-note">All 25 games start over. Your sandbox progress and completed records are kept.</p><button id="do-reset" class="chunk berry">${icon('trash')}Delete run</button><button id="keep-run" class="chunk lavender">Keep playing</button></div>`);
+  $('#do-reset').onclick = () => {feedback(); resetRun(); home();};
+  $('#keep-run').onclick = goDetailBack;
 }
 function resetRun() {
-  if (runLevels() > 0) {pastRuns.push({score: runScore(), levels: runLevels(), actions: runActions(), games: games.filter(g => isWon(g.id)).length, endedAt: Date.now()}); save('arc-runs-v1', pastRuns);}
+  if (games.every(g => isWon(g.id))) {pastRuns.push({score: runScore(), levels: runLevels(), actions: runActions(), games: games.length, complete: true, endedAt: Date.now()}); save('arc-runs-v1', pastRuns);}
   run = {startedAt: Date.now(), lastGame: null, games: {}}; persistRun();
+}
+function confirmRetry() {
+  if (!playing || screenName !== 'game' || loadingGame || pending.size) return;
+  detailPage('Restart this level?', `<div class="dialog-stack"><p class="dialog-note">${session.sandbox ? 'This attempt starts over. Your best is kept.' : 'This level starts over. One retry action is added to your score.'}</p><button id="do-retry" class="chunk berry">${icon('trash')}Restart level</button><button id="keep-playing" class="chunk lavender">Keep playing</button></div>`);
+  $('#keep-playing').onclick = goDetailBack;
+  $('#do-retry').onclick = () => {goDetailBack(); act({id: 0}, true);};
 }
 
 // ---- sandbox
 function firstUncleared() {for (const g of games) for (let level = 0; level < g.levels; level++) if (sandboxBest(g.id, level) == null) return {id: g.id, level}; return null;}
+const rating = (id, level, attempt) => sandboxRating(games, sandbox, diamonds, id, level, attempt);
 function levelPicker(id) {
-  const g = gameOf(id), golds = g.baseline.filter((_, k) => isGold(id, k)).length;
-  modal(id.toUpperCase(), `<div class="picker-head"><img src="./assets/${id}.png" alt=""><div><span class="stars">${icon('star')}${golds} / ${g.levels} gold</span><p class="dialog-note" style="text-align:left;margin-top:4px">Clear a level in as few actions as you can. Match or beat the human count for gold.</p></div></div><div class="level-list">${g.baseline.map((human, k) => {const best = sandboxBest(id, k); const cls = isGold(id, k) ? 'gold' : best != null ? 'cleared' : ''; return `<button class="level-row ${cls}" data-level="${k}"><span class="num">${k + 1}</span><span class="info"><strong>${best == null ? 'Not cleared yet' : best <= human ? 'Gold' : 'Cleared'}</strong><small>${best == null ? '' : `Your best ${best} · `}Human ${human}</small></span><span class="go">${icon('play-icon')}</span></button>`;}).join('')}</div>`);
-  $$('[data-level]').forEach(b => b.onclick = () => {feedback(); closeDialog(); playSandbox(id, Number(b.dataset.level));});
+  const g = gameOf(id);
+  detailPage(id.toUpperCase(), `<div class="level-list" style="--level-rows:${Math.ceil(g.levels / 2)};--landscape-rows:${Math.ceil(g.levels / 3)}">${g.baseline.map((human, k) => {
+    const best = sandboxBest(id, k), cls = rating(id, k);
+    const award = cls === 'diamond' ? icon('diamond') + 'Diamond' : cls === 'gold' ? icon('star') + 'Gold' : best != null ? `${human} actions for gold` : 'Not Cleared';
+    return `<button class="level-tile ${cls}" data-level="${k}" aria-label="Level ${k + 1}${best != null ? `, best ${best} actions` : ', Not Cleared'}"><span class="level-tile-main"><img src="./assets/levels/${id}/${k + 1}.png" alt="" width="64" height="64"><span class="level-tile-info"><strong>Level ${k + 1}</strong>${best != null ? `<small>Best <b>${best}</b> actions</small>` : ''}</span></span><span class="level-award">${award}</span></button>`;
+  }).join('')}</div>`, home, 'picker-screen');
+  $$('[data-level]').forEach(b => b.onclick = () => {feedback(); playSandbox(id, Number(b.dataset.level));});
+}
+function sandboxInfo() {
+  feedback();
+  detailPage('Sandbox', `<div class="about-copy"><p>Play any level. Your fewest actions are saved.</p><div class="info-row">${icon('check')}<span>Mint means cleared.</span></div><div class="info-row">${icon('star')}<span>Gold means you matched or beat the human count.</span></div>${allGold(games, sandbox) ? `<div class="info-row">${icon('diamond')}<span>Diamond means you matched or beat the public level record. Earlier bests count too.</span></div>` : ''}<p>After a clear above the gold target, we show how many actions to aim for.</p>${allGold(games, sandbox) ? `<p class="local-note">Records from <a href="https://arc3.games/" target="_blank" rel="noopener">ARC3.Games ↗</a> · ${diamonds.fetchedAt?.slice(0, 10) ?? ""}</p>` : ""}</div>`);
 }
 function playSandbox(id, level) {play({game: id, level, sandbox: true});}
 function levelCleared() {
@@ -195,23 +219,40 @@ function levelCleared() {
   if (prev == null || used < prev) {(sandbox[session.game] ??= {})[session.level] = used; save('arc-sandbox-v1', sandbox);}
   const gold = used <= human, stars = used <= human ? 3 : used <= human * 1.5 ? 2 : 1, last = session.level === g.levels - 1;
   feedback(true); confetti(gold ? 40 : 22);
-  modal(gold ? 'Gold!' : 'Level cleared!', `<div class="cleared-stars">${[0, 1, 2].map(i => icon('star', i < stars ? '' : 'off')).join('').replace(/<svg/g, (m, off) => m)}</div><div class="score-big">${used}<small> actions</small></div><p class="score-label">Human ${human}${prev != null && prev < used ? ` · your best ${prev}` : prev != null && used < prev ? ' · new best!' : ''}</p><div class="dialog-stack">${last ? '' : `<button id="next" class="chunk mint">${icon('play-icon')}Next level</button>`}<button id="again" class="chunk ${last ? 'mint' : 'yellow'}">${icon('reset')}Play again</button><button id="levels" class="chunk white">${icon('grid')}All levels</button></div>`, () => {if (!last) playSandbox(session.game, session.level + 1); else home();});
+  detailPage(rating(session.game, session.level, used) === 'diamond' ? 'Diamond!' : gold ? 'Gold!' : 'Level cleared!', `<div class="cleared-stars">${rating(session.game, session.level, used) === 'diamond' ? icon('diamond') : [0, 1, 2].map(i => icon('star', i < stars ? '' : 'off')).join('')}</div><div class="score-big">${used}<small> actions</small></div><p class="score-label">${gold ? "" : `${human} actions for gold`}${prev != null && prev < used ? ` · your best ${prev}` : prev != null && used < prev ? ' · new best!' : ''}</p><div class="dialog-stack">${last ? '' : `<button id="next" class="chunk mint">${icon('play-icon')}Next level</button>`}<button id="again" class="chunk ${last ? 'mint' : 'yellow'}">${icon('reset')}Play again</button><button id="levels" class="chunk white">${icon('grid')}All levels</button></div>`, () => {closeDetails(); levelPicker(session.game);});
   $$('.cleared-stars .icon').forEach((s, i) => s.style.setProperty('--d', `${150 + i * 160}ms`));
-  $('#next')?.addEventListener('click', () => {closeDialog(true); playSandbox(session.game, session.level + 1);});
-  $('#again').onclick = () => {closeDialog(true); playSandbox(session.game, session.level);};
-  $('#levels').onclick = () => {closeDialog(true); home(); levelPicker(session.game);};
+  $('#next')?.addEventListener('click', () => {closeDetails(); playSandbox(session.game, session.level + 1);});
+  $('#again').onclick = () => {closeDetails(); playSandbox(session.game, session.level);};
+  $('#levels').onclick = () => {closeDetails(); home(); levelPicker(session.game);};
 }
 
-// ---- dialogs
-let onDialogClose = null;
-function closeDialog(silent = false) {if (silent) onDialogClose = null; if ($('#dialog').open) $('#dialog').close();}
-function modal(title, content, onClose = null) {
-  onDialogClose = onClose;
-  $('#dialog-body').innerHTML = `<div class="dialog-top"><h2>${title}</h2><button class="close-button" aria-label="Close">${icon('close')}</button></div>${content}`;
-  $('#dialog .close-button').onclick = () => closeDialog();
-  if (!$('#dialog').open) $('#dialog').showModal();
+// ---- Full pages. Preserve DOM handlers and scroll when returning to a parent page.
+function closeDetails() {
+  if (screenName === 'detail') show(detailStack[0]?.screen ?? 'home', true);
+  detailStack = []; detailReturn = null;
 }
-$('#dialog').addEventListener('close', () => {const cb = onDialogClose; onDialogClose = null; cb?.();});
+function detailPage(title, content, onBack = null, cls = '') {
+  detailStack.push({screen: screenName, title: $('#detail-title').textContent, nodes: [...$('#detail-body').childNodes], scroll: $('#detail-body').scrollTop, onBack: detailReturn, cls: $('#detail').className, focus: document.activeElement});
+  detailReturn = onBack;
+  $('#detail').className = `screen detail-screen ${cls}`;
+  $('#detail-title').textContent = title;
+  $('#detail-body').innerHTML = content;
+  $('#detail-body').scrollTop = 0;
+  show('detail');
+  $('#detail-title').focus({preventScroll: true});
+}
+function goDetailBack() {
+  if (screenName !== 'detail') return;
+  const cb = detailReturn, prev = detailStack.pop(); detailReturn = prev?.onBack ?? null;
+  if (prev?.screen === 'detail') {
+    $('#detail-title').textContent = prev.title; $('#detail-body').replaceChildren(...prev.nodes);
+    $('#detail').className = prev.cls; $('#detail-body').scrollTop = prev.scroll;
+    if (!reduced) $('#detail-body').animate([{opacity: .2, transform: 'translateX(-18px)'}, {opacity: 1, transform: 'none'}], {duration: 200});
+  } else show(prev?.screen ?? 'home', true);
+  prev?.focus?.focus({preventScroll: true});
+  cb?.();
+}
+$('#detail-back').onclick = () => {feedback(); goDetailBack();};
 
 // ---- engine worker
 function startWorker() {
@@ -236,16 +277,16 @@ function startWorker() {
     if (data.type === 'error') {
       metrics.errors.push(data.error); pending.delete(data.requestId); if (!data.requestId) bootError = data.error;
       loadingGame = false; $('#loading').hidden = true;
-      modal('A little hiccup', `<div class="dialog-stack"><p class="dialog-note">Your saved progress is safe. Reload the arcade and try again.</p><button id="reload" class="chunk mint">Reload arcade</button><details class="about-copy"><summary>Details</summary><p class="error-detail"></p></details></div>`);
-      $('#dialog .error-detail').textContent = data.error; $('#reload').onclick = () => location.reload();
+      detailPage('A little hiccup', `<div class="dialog-stack"><p class="dialog-note">Your saved progress is safe. Reload the arcade and try again.</p><button id="reload" class="chunk mint">Reload arcade</button><details class="about-copy"><summary>Details</summary><p class="error-detail"></p></details></div>`);
+      $('#detail .error-detail').textContent = data.error; $('#reload').onclick = () => location.reload();
     }
   };
   worker.onerror = e => {bootError = e.message; notice('Could not load the arcade. Reload to try again.');};
 }
 function request(payload, kind, action) {const id = ++requestId; pending.set(id, {at: performance.now(), kind, action, session: sessionId}); worker.postMessage({...payload, requestId: id});}
 function play(config) {
-  if (loadingGame || !gameOf(config.game)) return;
-  feedback(); session = {...config, attempt: 0}; loadingGame = true; closeDialog(true);
+  if (loadingGame || !gameOf(config.game) || (!config.sandbox && config.game !== nextRunGame(games, run))) return;
+  feedback(); session = {...config, attempt: 0}; loadingGame = true; closeDetails();
   if (bootError) {worker?.terminate(); startWorker();}
   if (ready) beginSession(); else $('#loading').hidden = false;
 }
@@ -272,12 +313,12 @@ function draw(frame) {
 function render(old, initial = false) {
   const g = gameOf(session.game);
   $('#playing-name').textContent = session.game.toUpperCase();
-  $('#mode-badge').className = `pill mode-badge ${session.sandbox ? 'sandbox' : 'run'}`; $('#mode-badge').innerHTML = icon(session.sandbox ? 'flask' : 'flag'); $('#mode-badge').setAttribute('aria-label', session.sandbox ? 'Sandbox' : 'Benchmark run');
-  $('#live-score').hidden = session.sandbox; $('#target').hidden = !session.sandbox;
+  $('#mode-badge').className = `pill mode-badge ${session.sandbox ? 'sandbox' : 'run'}`; $('#mode-badge').innerHTML = icon(session.sandbox ? 'flask' : 'trophy'); $('#mode-badge').setAttribute('aria-label', session.sandbox ? 'About sandbox' : 'View benchmark scores');
+  $('#live-score').hidden = session.sandbox; $('#target').hidden = !session.sandbox || sandboxBest(session.game, session.level) == null || isGold(session.game, session.level);
   if (session.sandbox) {$('#actions').textContent = session.attempt; $('#target-value').textContent = g.baseline[session.level];}
   else {$('#actions').textContent = state.score.actions; $('#rhae').innerHTML = `${state.score.score.toFixed(1)}<small>%</small>`;}
   $('#level-dots').innerHTML = session.sandbox
-    ? Array.from({length: state.levels}, (_, i) => `<i class="${isGold(session.game, i) ? 'gold' : sandboxBest(session.game, i) != null ? 'done' : ''}${i === session.level ? ' here' : ''}"></i>`).join('')
+    ? Array.from({length: state.levels}, (_, i) => `<i class="${rating(session.game, i) === 'diamond' ? 'diamond' : isGold(session.game, i) ? 'gold' : sandboxBest(session.game, i) != null ? 'done' : ''}${i === session.level ? ' here' : ''}"></i>`).join('')
     : Array.from({length: state.levels}, (_, i) => `<i class="${i < state.completed ? 'done' : i === state.completed ? 'current' : ''}"></i>`).join('');
   const token = ++framesToken;
   if (state.animation && !initial) {
@@ -306,7 +347,7 @@ function renderControls() {
   let extra = '';
   if (a.includes(5)) extra += control(5, 'bolt', 'Action', 'yellow');
   if (a.includes(7)) extra += control(7, 'undo', 'Undo', 'grape');
-  extra += control(0, 'reset', 'Retry level', 'sky');
+  extra += control(0, 'trash', 'Restart level', 'berry');
   html += `<div class="extras${dirs.length ? '' : ' row'}">${extra}</div>`;
   $('#controls').innerHTML = html;
   $$('#controls [data-action]').forEach(b => {
@@ -314,15 +355,16 @@ function renderControls() {
     b.addEventListener('click', e => {if (e.detail === 0) act({id: Number(b.dataset.action)});}); // keyboard and assistive clicks only
   });
 }
-function act(action) {
-  if (!playing || !state || $('#dialog').open || loadingGame) return;
+function act(action, confirmed = false) {
+  if (!playing || !state || screenName !== 'game' || loadingGame) return;
   if (state.state === 'WIN' || (state.state === 'GAME_OVER' && action.id !== 0)) return;
   if (action.id !== 0 && !state.available.includes(action.id)) return;
+  if (action.id === 0 && !confirmed) {confirmRetry(); return;}
   framesToken++; draw(state.frames.at(-1)); feedback(); request({type: 'action', action}, 'action', action);
 }
 function won() {
   confetti(44);
-  modal('Game complete!', `<div class="win-art">${icon('trophy')}</div><div class="score-big">${state.score.score.toFixed(1)}<small>%</small></div><p class="score-label">${state.levels} levels · ${state.score.actions} actions</p><div class="dialog-stack"><button id="see-run" class="chunk lavender">This game’s scorecard</button><button id="go-next" class="chunk mint">${icon('play-icon')}Next game</button><button id="go-home" class="chunk white">${icon('grid')}All games</button></div>`);
+  detailPage('Game complete!', `<div class="win-art">${icon('trophy')}</div><div class="score-big">${state.score.score.toFixed(1)}<small>%</small></div><p class="score-label">${state.levels} levels · ${state.score.actions} actions</p><div class="dialog-stack"><button id="see-run" class="chunk lavender">This game’s scorecard</button><button id="go-next" class="chunk mint">${icon('play-icon')}Next game</button><button id="go-home" class="chunk white">${icon('grid')}All games</button></div>`);
   $('#see-run').onclick = () => runScorecard(session.game); $('#go-next').onclick = () => {home(); continueRun();}; $('#go-home').onclick = home;
 }
 function downloadScore() {
@@ -332,38 +374,37 @@ function downloadScore() {
   const a = document.createElement('a'); a.href = url; a.download = 'arc-quest-scorecard.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function runScorecard(id) {
-  const s = runGame(id)?.summary, g = gameOf(id); if (!s) return;
-  modal(id.toUpperCase() + ' scorecard', `<div class="score-big">${s.score.toFixed(1)}<small>%</small></div><p class="score-label">${s.levels_completed} / ${g.levels} levels · ${s.actions} actions</p><table class="score-table"><thead><tr><th>Level</th><th>Actions</th><th>Human</th><th>Score</th></tr></thead><tbody>${s.level_baseline_actions.map((b, i) => `<tr><td>${i + 1}${i < s.levels_completed ? ' ✓' : ''}</td><td>${s.level_actions[i] || '—'}</td><td>${b}</td><td>${s.level_scores[i].toFixed(1)}%</td></tr>`).join('')}</tbody></table><p class="dialog-note">Unfinished levels score zero. Later levels carry more weight.</p><button id="export" class="text-button">Export scorecard</button>`);
+  const s = runGame(id)?.summary, g = gameOf(id); if (!s) {scorecard(); return;}
+  detailPage(id.toUpperCase() + ' scorecard', `<div class="score-big">${s.score.toFixed(1)}<small>%</small></div><p class="score-label">${s.levels_completed} / ${g.levels} levels · ${s.actions} actions</p><table class="score-table"><thead><tr><th>Level</th><th>Actions</th><th>Human</th><th>Score</th></tr></thead><tbody>${s.level_baseline_actions.map((b, i) => `<tr><td>${i + 1}${i < s.levels_completed ? ' ✓' : ''}</td><td>${s.level_actions[i] || '—'}</td><td>${b}</td><td>${s.level_scores[i].toFixed(1)}%</td></tr>`).join('')}</tbody></table><p class="dialog-note">This game’s action-efficiency score: 100% matches the human pace. Unfinished levels score zero; later levels carry more weight.</p><button id="export" class="text-button">Export scorecard</button>`);
   $('#export').onclick = downloadScore;
 }
 function scorecard() {
   const best = bestRun(), attempted = games.filter(g => runGame(g.id)?.summary);
-  modal('Your scores', `<div class="score-big">${runScore().toFixed(1)}<small>%</small></div><p class="score-label">Current run · ${runLevels()} / ${totalLevels()} levels${best ? ` · best run ${best.score.toFixed(1)}%` : ''}</p>${attempted.length ? `<div class="score-list">${attempted.map(g => `<div class="score-row"><strong>${g.id.toUpperCase()}</strong><small>${runGame(g.id).summary.levels_completed} / ${g.levels} levels</small><b>${gameScore(g.id).toFixed(1)}%</b></div>`).join('')}</div>` : '<p class="dialog-note">Start a run to fill this in.</p>'}${pastRuns.length ? `<p class="score-label" style="margin-top:14px">Past runs</p><div class="score-list">${[...pastRuns].reverse().slice(0, 8).map(r => `<div class="score-row"><strong>${new Date(r.endedAt).toLocaleDateString()}</strong><small>${r.levels} levels · ${r.actions} actions</small><b>${r.score.toFixed(1)}%</b></div>`).join('')}</div>` : ''}<p class="dialog-note">Sandbox: ${sandboxCleared()} / ${totalLevels()} levels cleared, ${sandboxGold()} gold.</p><p class="dialog-note">Local practice scores, averaged across all 25 games. Unplayed games count as zero.</p><button id="export" class="text-button">Export scorecard</button>`);
+  detailPage('Your scores', `<div class="score-big">${runScore().toFixed(1)}<small>%</small></div><p class="score-label">Benchmark score · ${runLevels()} / ${totalLevels()} levels${best ? ` · best run ${best.score.toFixed(1)}%` : ''}</p>${attempted.length ? `<div class="score-list">${attempted.map(g => `<div class="score-row"><strong>${g.id.toUpperCase()}</strong><small>${runGame(g.id).summary.levels_completed} / ${g.levels} levels</small><b>${gameScore(g.id).toFixed(1)}%</b></div>`).join('')}</div>` : '<p class="dialog-note">Start a run to fill this in.</p>'}${pastRuns.length ? `<p class="score-label" style="margin-top:14px">Past runs</p><div class="score-list">${[...pastRuns].reverse().slice(0, 8).map(r => `<div class="score-row"><strong>${new Date(r.endedAt).toLocaleDateString()}</strong><small>${r.levels} levels · ${r.actions} actions</small><b>${r.score.toFixed(1)}%</b></div>`).join('')}</div>` : ''}<p class="dialog-note">Sandbox: ${sandboxCleared()} / ${totalLevels()} levels cleared, ${sandboxGold()} gold.</p><p class="dialog-note">Action-efficiency score, averaged across all 25 games. Unplayed games score zero. This is local practice, not a leaderboard rank.</p><button id="export" class="text-button">Export scorecard</button>`);
   $('#export').onclick = downloadScore;
 }
 function about() {
-  modal('How it works', `<div class="about-copy"><p>Play the <strong>25 original public ARC-AGI-3 games</strong> from ARC Prize. Discover each game’s rules as you go.</p><p><strong>Every action counts.</strong> Your score compares the actions you take with the recorded human baseline.</p><div class="formula">(human actions ÷ your actions)²</div><p>A level can earn up to 115%. Levels are weighted by their number; unfinished levels earn zero. Retrying a level costs one action.</p><p><strong>Benchmark</strong> is one graded run across all games; reset it any time from the home screen. <strong>Sandbox</strong> lets you replay any level and chase gold by matching the human count.</p><p><a href="https://docs.arcprize.org/methodology" target="_blank" rel="noopener">Official scoring methodology ↗</a></p><p>Games & engine © ARC Prize Foundation, MIT. Fredoka by Milena Brandão, OFL. Interface inspired by Cube Run.</p><p><a href="./credits.html" target="_blank">Credits & licenses ↗</a></p><p>All game actions run on your device.</p><button id="replay-intro" class="text-button">Show the intro again</button></div>`);
-  $('#replay-intro').onclick = () => {closeDialog(true); onboarding(0);};
+  detailPage('How it works', `<div class="about-copy"><p>Discover the rules of 25 puzzle games as you play.</p><p><strong>Sandbox</strong><br>Choose any level. Match the human action count for gold.</p><p><strong>Benchmark</strong><br>Play all games in order. “Complete” counts levels cleared. Your score measures action efficiency: 100% matches the human pace, with up to 115% per level.</p><p>Unfinished levels score zero. Retrying costs one action.</p><p class="local-note">Saved on your device. Local practice, not a leaderboard rank.</p><div class="info-links"><a href="./credits.html" target="_blank" rel="noopener">Credits & licenses ↗</a><button id="replay-intro" class="text-button">Show intro</button></div></div>`);
+  $('#replay-intro').onclick = () => {closeDetails(); onboarding(0);};
 }
 
 // ---- wiring
 $('#record').onclick = () => {feedback(); scorecard();};
+$('#mode-badge').onclick = () => {feedback(); if (session.sandbox) sandboxInfo(); else scorecard();};
 $('#live-score').onclick = () => {feedback(); runScorecard(session.game);};
 $('#about').onclick = () => {feedback(); about();};
-$('#back').onclick = () => {feedback(); home();};
+$('#back').onclick = () => {feedback(); const id = session?.game, practice = session?.sandbox; home(); if (practice) levelPicker(id);};
 $('#game-over').addEventListener('click', () => act({id: 0}));
 $$('.sound-toggle').forEach(b => b.onclick = () => {settings.sound = !settings.sound; updateSettings(); feedback();});
 $$('.haptic-toggle').forEach(b => b.onclick = () => {settings.haptic = !settings.haptic; updateSettings(); feedback(); if (settings.haptic && !navigator.vibrate && !window.AndroidGame) notice('Vibration isn’t supported by this browser.');});
 $('#cancel-loading').onclick = () => {loadingGame = false; $('#loading').hidden = true; sessionId = null;};
-$('#dialog').addEventListener('click', e => {if (e.target === $('#dialog')) {const r = $('#dialog').getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) closeDialog();}});
-
 // Board gestures. A short press is a click (action 6) at the pressed cell; a longer drag is a swipe
 // in the games that move. Both are decided on release, so a swipe never fires a click first.
 const SWIPE = 18;
 let pointer = null;
 const board = $('#board');
 board.addEventListener('pointerdown', e => {
-  if (!playing || $('#dialog').open || !e.isPrimary) return;
+  if (!playing || screenName === 'detail' || !e.isPrimary) return;
   e.preventDefault(); board.setPointerCapture(e.pointerId);
   pointer = {x: e.clientX, y: e.clientY, id: e.pointerId};
 });
@@ -385,25 +426,30 @@ board.addEventListener('pointercancel', () => pointer = null);
 board.addEventListener('contextmenu', e => e.preventDefault());
 
 window.arcBack = () => {
-  if ($('#dialog').open) {closeDialog(); return true;}
+  if (screenName === 'detail') {goDetailBack(); return true;}
   if (!$('#loading').hidden) {$('#cancel-loading').click(); return true;}
-  if (!$('#game').hidden) {home(); return true;}
+  if (!$('#game').hidden) {$('#back').click(); return true;}
   if (!$('#onboarding').hidden) {if (pageIndex > 0) onboarding(pageIndex - 1); else if (settings.onboarded) home(); else return false; return true;}
   return false;
 };
 window.addEventListener('keydown', e => {
   if (e.repeat) return;
   if (!$('#launch').hidden && (e.key === 'Enter' || e.key === ' ')) {e.preventDefault(); $('#launch-start').click(); return;}
+  if (e.key === 'Escape') {e.preventDefault(); window.arcBack(); return;}
   if (!playing) return;
-  if (e.key === 'Escape') {if ($('#dialog').open) closeDialog(); else home(); return;}
-  if ($('#dialog').open) return;
+  if (screenName === 'detail') return;
   const map = {ArrowUp: 1, w: 1, ArrowDown: 2, s: 2, ArrowLeft: 3, a: 3, ArrowRight: 4, d: 4, ' ': 5, z: 7, r: 0};
   if (e.key in map) {e.preventDefault(); act({id: map[e.key]});}
 });
 
+// Drop stale gestures/animation frames when Android or the browser changes focus.
+function suspendView() {for (const animation of document.getAnimations()) if (Number.isFinite(animation.effect?.getComputedTiming().endTime)) animation.finish(); pointer = null; framesToken++; $('#confetti').replaceChildren(); if (state) draw(state.frames.at(-1)); audioContext?.suspend();}
+window.arcSuspend = suspendView;
+window.addEventListener('blur', suspendView);
+document.addEventListener('visibilitychange', () => {if (document.hidden) suspendView(); else if (state) {framesToken++; draw(state.frames.at(-1));}});
 updateSettings();
 try {
-  games = await (await fetch('./games.json')).json();
+  [games, diamonds] = await Promise.all(['./games.json', './diamonds.json'].map(async url => (await fetch(url)).json()));
   games.sort((a, b) => {const first = ['ls20', 'ft09', 'vc33']; const ai = first.indexOf(a.id), bi = first.indexOf(b.id); return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi) || a.id.localeCompare(b.id);});
   startWorker(); launch();
 } catch (e) {notice('Could not load games. Please reload.'); metrics.errors.push(String(e));}

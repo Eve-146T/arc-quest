@@ -8,18 +8,7 @@
   font-synthesis:none;-webkit-tap-highlight-color:transparent
 }
 *{box-sizing:border-box}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
-body{
-  user-select:none;background:var(--page-top);
-  background-image:
-    radial-gradient(circle 42vmax at 8% 10%,#ff4fa346,transparent 70%),
-    radial-gradient(circle 34vmax at 94% 30%,#3ec6ff46,transparent 70%),
-    radial-gradient(circle 36vmax at 14% 68%,#2ee6a640,transparent 70%),
-    radial-gradient(circle 40vmax at 88% 84%,#ffd23f46,transparent 70%),
-    radial-gradient(circle 44vmax at 50% 100%,#9b5cff40,transparent 70%),
-    linear-gradient(var(--page-top),var(--page-bottom));
-  background-attachment:fixed
-}
+html,body{user-select:none;background:var(--page-top)}
 button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulation;-webkit-touch-callout:none;background:none;padding:0}
 button:disabled{cursor:wait;opacity:.7}
 button:focus-visible,a:focus-visible{outline:4px solid var(--ink);outline-offset:4px}
@@ -49,8 +38,7 @@ h1,h2,h3,p{margin:0}
 .white{background:#fff;--lip:#cfc6e0}
 .lavender{background:var(--lavender);--lip:#8979ad}
 .berry{background:var(--berry);--lip:#b0284a;color:#fff}
-.chunk:active,.chip:active,.game-card:active,.level-row:active,.mode-card:active{transform:translateY(5px);box-shadow:0 1px 0 var(--lip)}
-.muted-setting{opacity:.55}
+.chunk:active,.chip:active,.game-card:active,.mode-card:active{transform:translateY(5px);box-shadow:0 1px 0 var(--lip)}
 .text-button{padding:13px;font-size:17px;font-weight:550;text-decoration:underline;text-underline-offset:3px}
 
 /* White pills carry numbers (score, actions, target). */
@@ -78,7 +66,7 @@ button.pill:active{transform:translateY(3px);box-shadow:0 1px 0 #2b1f5e26}
 .launch-tag{color:var(--ink-soft);font-weight:650;letter-spacing:3px;font-size:13px;animation:rise .8s .45s var(--pop) both}
 .tap-start{margin-top:8px;font-size:26px;-webkit-text-stroke:5px var(--ink);padding:18px 26px;animation:breathe 1.5s ease-in-out infinite,rise .8s .7s var(--pop) both}
 .boot{position:absolute;left:50%;bottom:max(22px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(60%,240px);height:8px;border-radius:6px;background:#2b1f5e1f;overflow:hidden;transition:opacity .5s}
-#boot-bar{height:100%;width:4%;border-radius:6px;background:linear-gradient(90deg,var(--mint),var(--sky));transition:width .5s}
+#boot-bar{height:100%;width:4%;border-radius:6px;background:var(--mint);transition:width .5s}
 .boot.done{opacity:0}
 @keyframes rise{from{opacity:0;transform:translateY(28px) scale(.92)}to{opacity:1;transform:none}}
 @keyframes cell-in{to{transform:scale(1)}}
@@ -124,8 +112,8 @@ button.pill:active{transform:translateY(3px);box-shadow:0 1px 0 #2b1f5e26}
 .mode-card .icon{width:40px;height:40px;stroke-width:2.4}
 .mode-card strong{display:block;font-size:20px;letter-spacing:1px}
 .mode-card small{display:block;font-size:14px;color:var(--ink-soft);line-height:1.35;margin-top:3px}
-.mode-card.run{--lip:#1f9c71;background:linear-gradient(135deg,#d7fff0,#fff)}
-.mode-card.sandbox{--lip:#ad8f2b;background:linear-gradient(135deg,#fff3c4,#fff)}
+.mode-card.run{--lip:#1f9c71;background:#e0faf0}
+.mode-card.sandbox{--lip:#ad8f2b;background:#fff3ce}
 
 /* ---- Home. */
 .mode-switch{position:relative;display:grid;grid-template-columns:1fr 1fr;background:#ffffff8c;border-radius:18px;padding:4px;flex-shrink:0;box-shadow:inset 0 2px 0 #2b1f5e14}
@@ -136,8 +124,8 @@ button.pill:active{transform:translateY(3px);box-shadow:0 1px 0 #2b1f5e26}
 .home-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;display:flex;flex-direction:column;gap:14px;padding:6px 4px 14px}
 .home-scroll::-webkit-scrollbar{display:none}
 .home-scroll>*{flex-shrink:0}
-.hero{--lip:#1f9c71;background:linear-gradient(135deg,#d7fff0,#f3fbff);border-radius:24px;box-shadow:0 6px 0 var(--lip);padding:16px 16px 18px;display:flex;flex-direction:column;gap:10px;animation:rise .45s var(--pop) both;position:relative;overflow:hidden}
-.hero.sandbox{--lip:#ad8f2b;background:linear-gradient(135deg,#fff3c4,#fff8ec)}
+.hero{--lip:#1f9c71;background:#e0faf0;border-radius:24px;box-shadow:0 6px 0 var(--lip);padding:16px 16px 18px;display:flex;flex-direction:column;gap:10px;animation:rise .45s var(--pop) both;position:relative;overflow:hidden}
+.hero.sandbox{--lip:#ad8f2b;background:#fff3ce}
 .hero:before{content:'';position:absolute;right:-30px;top:-30px;width:150px;height:150px;border-radius:50%;background:#ffffff70;pointer-events:none}
 .hero-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .hero-label{font-size:13px;font-weight:700;letter-spacing:3px;color:var(--ink-soft)}
@@ -177,24 +165,6 @@ button.pill:active{transform:translateY(3px);box-shadow:0 1px 0 #2b1f5e26}
 .game-card .segments{height:6px;gap:3px}
 .bottom-bar{display:flex;justify-content:space-between;align-items:center;flex-shrink:0;padding-top:2px}
 .chip-row{display:flex;gap:10px}
-.info-chip{animation:wiggle 6s 3s ease-in-out infinite}
-@keyframes wiggle{0%,88%,100%{transform:rotate(0)}90%{transform:rotate(-12deg) scale(1.08)}93%{transform:rotate(12deg) scale(1.08)}96%{transform:rotate(-6deg)}98%{transform:rotate(4deg)}}
-
-/* ---- Level picker (sandbox). */
-.level-list{display:flex;flex-direction:column;gap:10px;margin-top:4px}
-.level-row{--lip:#cfc6e0;display:flex;align-items:center;gap:12px;background:var(--card-alt);border-radius:16px;padding:10px 12px;box-shadow:0 4px 0 var(--lip);text-align:left;transition:transform .08s,box-shadow .08s}
-.level-row .num{width:42px;height:42px;border-radius:12px;background:var(--card);display:grid;place-items:center;font-weight:700;font-size:18px;box-shadow:inset 0 0 0 2px #2b1f5e1a;flex-shrink:0}
-.level-row.cleared .num{background:var(--mint)}
-.level-row.gold .num{background:var(--gold)}
-.level-row .info{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
-.level-row .info strong{font-size:17px}
-.level-row .info small{font-size:13px;color:var(--ink-soft)}
-.level-row .go{width:40px;height:40px;border-radius:12px;background:var(--mint);display:grid;place-items:center;box-shadow:0 3px 0 #1f9c71;flex-shrink:0}
-.level-row .go .icon{width:20px;height:20px}
-.picker-head{display:flex;align-items:center;gap:14px;margin-bottom:6px}
-.picker-head img{width:72px;height:72px;image-rendering:pixelated;border:2px solid var(--ink);border-radius:12px}
-.picker-head .stars{font-size:15px}
-
 /* ---- Game screen. */
 #playing-name{font-size:34px;flex:1;text-align:center;min-width:0}
 .mode-badge{width:52px;padding:8px;color:var(--gold)}
@@ -230,13 +200,7 @@ button.pill:active{transform:translateY(3px);box-shadow:0 1px 0 #2b1f5e26}
 .extras.row .chip{width:64px;height:58px}
 
 /* ---- Sheets: a white card on a dim scrim, popping in. */
-dialog{border:0;background:var(--card);color:var(--ink);padding:22px;border-radius:28px;box-shadow:0 8px 0 #b9aed4,0 20px 80px #17072d55;width:calc(100% - 36px);max-width:470px;max-height:calc(100dvh - 70px);overscroll-behavior:contain}
-dialog[open]{animation:sheet-in .32s var(--pop) both}
-dialog::backdrop{background:#140b3a99;backdrop-filter:blur(4px);animation:fade-in .25s both}
 @keyframes sheet-in{from{opacity:0;transform:translateY(40px) scale(.94)}to{opacity:1;transform:none}}
-.dialog-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:12px}
-.dialog-top h2{font-size:28px;font-weight:700;letter-spacing:.5px}
-.close-button{background:var(--card-alt);border-radius:14px;width:44px;height:44px;display:grid;place-items:center;flex-shrink:0}
 .dialog-stack{display:flex;flex-direction:column;gap:14px}
 .dialog-stack>.chunk{width:100%}
 .dialog-note{font-size:16px;line-height:1.45;color:var(--muted);text-align:center}
@@ -341,3 +305,60 @@ dialog::backdrop{background:#140b3a99;backdrop-filter:blur(4px);animation:fade-i
   .page>div:last-child{flex:1}
 }
 @media(prefers-reduced-motion:reduce){*,*:before{animation:none!important;transition:none!important}.pixel-grid i{transform:none}}
+
+/* Full pages keep the header fixed and scroll only their content. */
+.mode-switch[data-mode="sandbox"] .thumb{transform:none}
+.mode-switch[data-mode="run"] .thumb{transform:translateX(100%)}
+.screen{min-height:0;overflow:hidden}
+.detail-screen .top-bar{justify-content:flex-start}
+#detail-title{font-size:28px;line-height:1.1;outline:none}
+.detail-body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#cfc6e0 transparent;padding:10px 4px 16px;overflow-wrap:break-word}
+.detail-body>.about-copy,.detail-body>.dialog-stack{background:#fff;border-radius:22px;padding:22px}
+.detail-body>.dialog-stack{margin-top:24px}
+.detail-body .dialog-note,.score-label{color:var(--ink-soft)}
+.detail-body .white{color:var(--ink);background:var(--card-alt)}
+.info-chip{animation:none;background:transparent;box-shadow:none;color:var(--ink-soft)}
+.info-chip:before{display:none}
+.setting-toggle{width:46px;height:46px;border-radius:15px;background:#ffffffeb;color:var(--muted);--lip:#cfc6e0}
+.setting-toggle[aria-pressed="true"]{background:var(--sky);color:var(--ink);--lip:#2a87ad}
+.setting-toggle .icon{width:25px;height:25px;stroke-width:2.2}
+.quiet-button{display:grid;place-items:center;width:44px;height:36px;color:var(--ink-soft);border-radius:12px}
+.info-row{display:flex;align-items:center;gap:14px;margin:22px 0;color:var(--ink)}
+.info-links{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-top:18px;font-size:14px}
+.info-links .text-button{font-size:14px;padding:10px 0}
+.local-note{font-size:14px}
+.hero.run .hero-score small{font-size:clamp(16px,5vw,24px)}
+.game-card.locked{cursor:default;opacity:.48;animation:none}
+.game-card.locked:active{transform:none;box-shadow:0 5px 0 var(--lip)}
+.score-caption{display:flex;flex-direction:column;align-items:center;gap:0;line-height:1.05}
+.stats .score-caption>small{font-size:11px;margin-top:3px}
+.about-copy{color:var(--ink-soft)}
+@media(max-width:350px){.detail-body>.about-copy{padding:16px}.about-copy{font-size:15px}}
+@media(orientation:landscape) and (max-height:620px){
+  .detail-body>.about-copy{max-width:720px;margin:auto;padding:18px}
+  .detail-body>.dialog-stack{max-width:480px;margin:0 auto}
+  .hero.sandbox{grid-template-areas:'top top' 'score bar' 'actions actions'}
+}
+/* Level cards show the actual board; the gold target appears only after a slower clear. */
+.picker-screen .detail-body{overflow:hidden}
+.level-list{height:100%;max-height:calc(var(--level-rows) * 120px);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(var(--level-rows),minmax(0,1fr));gap:12px}
+.level-tile{--lip:#cfc6e0;display:flex;flex-direction:column;justify-content:center;gap:10px;min-height:0;border-radius:18px;background:#fff;box-shadow:0 4px 0 var(--lip);padding:10px;text-align:left;transition:transform .08s,box-shadow .08s}
+.level-tile:active{transform:translateY(3px);box-shadow:0 1px 0 var(--lip)}
+.level-tile-main{display:flex;align-items:center;gap:10px;min-width:0}
+.level-tile img{width:clamp(40px,13vw,56px);height:auto;aspect-ratio:1;border-radius:7px;image-rendering:pixelated;background:#000;flex-shrink:0}
+.level-tile-info{display:flex;flex-direction:column;gap:5px;min-width:0}
+.level-tile-info strong{font-size:18px;white-space:nowrap}
+.level-tile-info small{font-size:12px;color:var(--ink-soft);line-height:1.15}
+.level-award{min-height:20px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;color:var(--ink-soft);white-space:nowrap}
+.level-award .icon{width:20px;height:20px}
+.level-tile.gold{background:#fff4ce;--lip:#e0b948}
+.level-tile.diamond{background:#ddf8ff;--lip:#59acc4}
+.level-tile.cleared{--lip:#60c9a7}
+.level-tile.gold .level-award,.level-tile.diamond .level-award{font-weight:650;color:var(--ink)}
+.segments .diamond{background:#88eaff}
+@media(max-width:350px){.level-tile{padding:8px;gap:6px}.level-tile-main{gap:7px}.level-tile img{width:36px}.level-tile-info strong{font-size:16px}.level-tile-info small{font-size:11px}.level-award{font-size:11px}}
+@media(orientation:landscape) and (max-height:620px){
+  .level-list{--level-rows:var(--landscape-rows)!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+  .level-tile{flex-direction:row;align-items:center;justify-content:space-between;padding:6px 8px;gap:6px}
+  .level-tile-main{gap:7px}.level-tile img{width:34px}.level-tile-info strong{font-size:14px}.level-tile-info small{font-size:10px}.level-award{font-size:10px;white-space:normal;max-width:76px}.level-award .icon{width:18px;height:18px}
+}

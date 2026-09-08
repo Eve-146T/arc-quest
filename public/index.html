@@ -25,17 +25,17 @@
 <section id="home" class="screen" hidden>
   <header class="top-bar">
     <h1 class="logo stage-text"><span>ARC</span> <span class="accent">QUEST</span></h1>
-    <button id="record" class="pill" aria-label="View your scores"><svg class="icon"><use href="#trophy"/></svg><span id="best-score">0<small>%</small></span></button>
+    <button id="record" class="pill" hidden aria-label="View your scores"><svg class="icon"><use href="#trophy"/></svg><span id="best-score">0<small>%</small></span></button>
   </header>
-  <div class="mode-switch" role="tablist" aria-label="Mode"><span class="thumb" aria-hidden="true"></span><button role="tab" data-mode="run" aria-selected="true">BENCHMARK</button><button role="tab" data-mode="sandbox" aria-selected="false">SANDBOX</button></div>
+  <div class="mode-switch" role="tablist" aria-label="Mode"><span class="thumb" aria-hidden="true"></span><button role="tab" data-mode="sandbox" aria-selected="true">SANDBOX</button><button role="tab" data-mode="run" aria-selected="false">BENCHMARK</button></div>
   <div id="home-scroll" class="home-scroll">
     <section id="hero" class="hero" aria-live="polite"></section>
     <div id="game-grid" class="game-grid" aria-label="Games"></div>
   </div>
   <nav class="bottom-bar" aria-label="Settings">
     <div class="chip-row">
-      <button class="chip sky sound-toggle" aria-label="Turn sound on" aria-pressed="false"><svg class="icon"><use href="#sound-off"/></svg></button>
-      <button class="chip sky haptic-toggle" aria-label="Turn vibration off" aria-pressed="true"><svg class="icon"><use href="#vibrate"/></svg></button>
+      <button class="chip setting-toggle sound-toggle" aria-label="Turn sound on" aria-pressed="false"><svg class="icon"><use href="#sound-off"/></svg></button>
+      <button class="chip setting-toggle haptic-toggle" aria-label="Turn vibration off" aria-pressed="true"><svg class="icon"><use href="#vibrate"/></svg></button>
     </div>
     <button id="about" class="chip white info-chip" aria-label="How it works"><svg class="icon"><use href="#info"/></svg></button>
   </nav>
@@ -45,11 +45,11 @@
   <header class="top-bar">
     <button id="back" class="chip white" aria-label="Back to games"><svg class="icon"><use href="#back-icon"/></svg></button>
     <h2 id="playing-name" class="stage-text">LS20</h2>
-    <div id="mode-badge" class="pill mode-badge"><svg class="icon"><use href="#flask"/></svg></div>
+    <button id="mode-badge" class="pill mode-badge" aria-label="About sandbox"><svg class="icon"><use href="#flask"/></svg></button>
   </header>
   <div class="game-body">
     <div class="board-area">
-      <div class="stats"><span class="pill"><svg class="icon sky-ink"><use href="#bolt"/></svg><b id="actions">0</b><small>actions</small></span><button id="live-score" class="pill" aria-label="View current score"><svg class="icon"><use href="#trophy"/></svg><b id="rhae">0<small>%</small></b></button><span id="target" class="pill" hidden aria-label="Human baseline actions"><svg class="icon berry-ink"><use href="#target-icon"/></svg><b id="target-value">0</b></span></div>
+      <div class="stats"><span class="pill"><svg class="icon sky-ink"><use href="#bolt"/></svg><b id="actions">0</b><small>actions</small></span><button id="live-score" class="pill" aria-label="View this game’s efficiency score"><svg class="icon"><use href="#trophy"/></svg><span class="score-caption"><b id="rhae">0<small>%</small></b><small>game score</small></span></button><span id="target" class="pill" hidden aria-label="Actions for gold"><svg class="icon berry-ink"><use href="#target-icon"/></svg><span class="score-caption"><b id="target-value">0</b><small>for gold</small></span></span></div>
       <div class="board-shell">
         <canvas id="board" width="64" height="64" aria-label="ARC-AGI-3 puzzle board"></canvas>
         <div id="level-toast" role="status"></div>
@@ -60,10 +60,14 @@
     <div id="controls" class="controls" aria-label="Game controls"></div>
   </div>
 </section>
+<section id="detail" class="screen detail-screen" hidden aria-labelledby="detail-title">
+  <header class="top-bar"><button id="detail-back" class="chip white" aria-label="Back"><svg class="icon"><use href="#back-icon"/></svg></button><h2 id="detail-title" tabindex="-1"></h2></header>
+  <div id="detail-body" class="detail-body"></div>
+</section>
 </main>
 <div id="confetti" aria-hidden="true"></div>
 <div id="loading" class="overlay" hidden><div class="sheet loading-sheet"><div class="loading-dots"><i></i><i></i><i></i></div><h2>Warming up…</h2><p id="loading-text">Waking up the arcade…</p><div class="loading-track"><div id="loading-progress"></div></div><button id="cancel-loading" class="text-button">Back</button></div></div>
-<dialog id="dialog"><div id="dialog-body"></div></dialog>
+
 <div id="notice" role="status"></div>
 <svg xmlns="http://www.w3.org/2000/svg" class="svg-library" aria-hidden="true"><defs>
 <symbol id="left" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol><symbol id="right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol><symbol id="up" viewBox="0 0 24 24"><path d="m5 15 7-7 7 7"/></symbol><symbol id="down" viewBox="0 0 24 24"><path d="m5 9 7 7 7-7"/></symbol>
@@ -77,7 +81,10 @@
 <symbol id="flag" viewBox="0 0 24 24"><path d="M5 21V4m0 0h12l-3 4 3 4H5"/></symbol>
 <symbol id="sound-on" viewBox="0 0 24 24"><path d="M3 9h4l5-5v16l-5-5H3z" fill="currentColor" stroke="none"/><path d="M16 8a6 6 0 0 1 0 8m3-12a11 11 0 0 1 0 16" stroke-width="2"/></symbol>
 <symbol id="sound-off" viewBox="0 0 24 24"><path d="M3 9h4l5-5v16l-5-5H3z" fill="currentColor" stroke="none"/><path d="m17 9 5 6m0-6-5 6" stroke-width="2"/></symbol>
-<symbol id="vibrate" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 8v8M21 8v8" stroke-width="2"/></symbol>
+<symbol id="trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></symbol>
+<symbol id="diamond" viewBox="0 0 24 24"><path d="m3 8 4-5h10l4 5-9 13z" fill="#88eaff" stroke="#167ca6" stroke-width="1.8"/><path d="M3 8h18M7 3l5 18 5-18" stroke="#167ca6" stroke-width="1.3"/></symbol>
+<symbol id="vibrate-off" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="m3 3 18 18" stroke-width="2"/></symbol>
+<symbol id="vibrate" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M1 9v6M4 7v10M20 7v10M23 9v6" stroke-width="2"/></symbol>
 <symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v.1"/></symbol>
 <symbol id="reset" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 1 8M4 4v6h6"/></symbol>
 <symbol id="undo" viewBox="0 0 24 24"><path d="M9 7 4 12l5 5M4 12h10a5 5 0 0 1 0 10h-3"/></symbol>
