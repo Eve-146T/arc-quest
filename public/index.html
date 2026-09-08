@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#ffe4f3"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="25 original ARC-AGI-3 games. Discover the rules, solve the levels, and beat the human pace.">
+<link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="./assets/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="./assets/icon-192.png">
+<title>ARC Quest</title><link rel="preload" href="./assets/Fredoka.ttf" as="font" type="font/ttf" crossorigin><link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main id="app">
+<section id="launch" class="screen launch">
+  <div class="launch-art"><div id="launch-grid" class="pixel-grid" aria-hidden="true"></div></div>
+  <h1 class="logo stage-text big"><span>ARC</span> <span class="accent">QUEST</span></h1>
+  <p class="launch-tag">ARC-AGI-3 · 25 GAMES · 183 LEVELS</p>
+  <button id="launch-start" class="tap-start stage-text">TAP TO START</button>
+  <div class="boot" aria-hidden="true"><div id="boot-bar"></div></div>
+</section>
+
+<section id="onboarding" class="screen" hidden>
+  <div id="onboard-pages" class="pages"></div>
+  <div class="onboard-nav"><button id="onboard-skip" class="text-button">Skip</button><div id="onboard-dots" class="dots" aria-hidden="true"></div><button id="onboard-next" class="chunk mint">NEXT</button></div>
+</section>
+
+<section id="home" class="screen" hidden>
+  <header class="top-bar">
+    <h1 class="logo stage-text"><span>ARC</span> <span class="accent">QUEST</span></h1>
+    <button id="record" class="pill" aria-label="View your scores"><svg class="icon"><use href="#trophy"/></svg><span id="best-score">0<small>%</small></span></button>
+  </header>
+  <div class="mode-switch" role="tablist" aria-label="Mode"><span class="thumb" aria-hidden="true"></span><button role="tab" data-mode="run" aria-selected="true">BENCHMARK</button><button role="tab" data-mode="sandbox" aria-selected="false">SANDBOX</button></div>
+  <div id="home-scroll" class="home-scroll">
+    <section id="hero" class="hero" aria-live="polite"></section>
+    <div id="game-grid" class="game-grid" aria-label="Games"></div>
+  </div>
+  <nav class="bottom-bar" aria-label="Settings">
+    <div class="chip-row">
+      <button class="chip sky sound-toggle" aria-label="Turn sound on" aria-pressed="false"><svg class="icon"><use href="#sound-off"/></svg></button>
+      <button class="chip sky haptic-toggle" aria-label="Turn vibration off" aria-pressed="true"><svg class="icon"><use href="#vibrate"/></svg></button>
+    </div>
+    <button id="about" class="chip white info-chip" aria-label="How it works"><svg class="icon"><use href="#info"/></svg></button>
+  </nav>
+</section>
+
+<section id="game" class="screen" hidden>
+  <header class="top-bar">
+    <button id="back" class="chip white" aria-label="Back to games"><svg class="icon"><use href="#back-icon"/></svg></button>
+    <h2 id="playing-name" class="stage-text">LS20</h2>
+    <div id="mode-badge" class="pill mode-badge"><svg class="icon"><use href="#flask"/></svg></div>
+  </header>
+  <div class="game-body">
+    <div class="board-area">
+      <div class="stats"><span class="pill"><svg class="icon sky-ink"><use href="#bolt"/></svg><b id="actions">0</b><small>actions</small></span><button id="live-score" class="pill" aria-label="View current score"><svg class="icon"><use href="#trophy"/></svg><b id="rhae">0<small>%</small></b></button><span id="target" class="pill" hidden aria-label="Human baseline actions"><svg class="icon berry-ink"><use href="#target-icon"/></svg><b id="target-value">0</b></span></div>
+      <div class="board-shell">
+        <canvas id="board" width="64" height="64" aria-label="ARC-AGI-3 puzzle board"></canvas>
+        <div id="level-toast" role="status"></div>
+        <button id="game-over" class="board-overlay" hidden><span class="stage-text">GAME OVER</span><span class="chunk mint"><svg class="icon"><use href="#reset"/></svg>TRY AGAIN</span></button>
+      </div>
+      <div id="level-dots" class="segments" aria-label="Level progress"></div>
+    </div>
+    <div id="controls" class="controls" aria-label="Game controls"></div>
+  </div>
+</section>
+</main>
+<div id="confetti" aria-hidden="true"></div>
+<div id="loading" class="overlay" hidden><div class="sheet loading-sheet"><div class="loading-dots"><i></i><i></i><i></i></div><h2>Warming up…</h2><p id="loading-text">Waking up the arcade…</p><div class="loading-track"><div id="loading-progress"></div></div><button id="cancel-loading" class="text-button">Back</button></div></div>
+<dialog id="dialog"><div id="dialog-body"></div></dialog>
+<div id="notice" role="status"></div>
+<svg xmlns="http://www.w3.org/2000/svg" class="svg-library" aria-hidden="true"><defs>
+<symbol id="left" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol><symbol id="right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol><symbol id="up" viewBox="0 0 24 24"><path d="m5 15 7-7 7 7"/></symbol><symbol id="down" viewBox="0 0 24 24"><path d="m5 9 7 7 7-7"/></symbol>
+<symbol id="back-icon" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7" stroke-width="3.5"/></symbol>
+<symbol id="play-icon" viewBox="0 0 24 24"><path d="M7 4v16l13-8z" fill="currentColor" stroke-linejoin="round"/></symbol>
+<symbol id="trophy" viewBox="0 0 24 24"><path d="M7 3h10v7a5 5 0 0 1-10 0zm0 2H3v3a4 4 0 0 0 4 4m10-7h4v3a4 4 0 0 1-4 4M12 15v5m-4 1h8" fill="#ffd23f" stroke="#ab7a09" stroke-width="2"/></symbol>
+<symbol id="star" viewBox="0 0 24 24"><path d="m12 2 3 6.5 7 .9-5.1 4.9 1.3 7L12 18l-6.2 3.3 1.3-7L2 9.4l7-.9z" fill="#ffd23f" stroke="#ab7a09" stroke-width="2" stroke-linejoin="round"/></symbol>
+<symbol id="bolt" viewBox="0 0 24 24"><path d="m13 2-9 12h7l-1 8 10-13h-7z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="target-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 1v4m0 14v4M1 12h4m14 0h4" stroke-width="2"/></symbol>
+<symbol id="flask" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-6 10a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-6-10V3"/><path d="M7 15h10" stroke-width="2"/></symbol>
+<symbol id="flag" viewBox="0 0 24 24"><path d="M5 21V4m0 0h12l-3 4 3 4H5"/></symbol>
+<symbol id="sound-on" viewBox="0 0 24 24"><path d="M3 9h4l5-5v16l-5-5H3z" fill="currentColor" stroke="none"/><path d="M16 8a6 6 0 0 1 0 8m3-12a11 11 0 0 1 0 16" stroke-width="2"/></symbol>
+<symbol id="sound-off" viewBox="0 0 24 24"><path d="M3 9h4l5-5v16l-5-5H3z" fill="currentColor" stroke="none"/><path d="m17 9 5 6m0-6-5 6" stroke-width="2"/></symbol>
+<symbol id="vibrate" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 8v8M21 8v8" stroke-width="2"/></symbol>
+<symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v.1"/></symbol>
+<symbol id="reset" viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 1 8M4 4v6h6"/></symbol>
+<symbol id="undo" viewBox="0 0 24 24"><path d="M9 7 4 12l5 5M4 12h10a5 5 0 0 1 0 10h-3"/></symbol>
+<symbol id="close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+<symbol id="grid" viewBox="0 0 24 24"><path d="M3 3h5v5H3zm7 0h5v5h-5zm7 0h5v5h-5zM3 10h5v5H3zm7 0h5v5h-5zm7 0h5v5h-5zM3 17h5v5H3zm7 0h5v5h-5zm7 0h5v5h-5z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></symbol>
+<symbol id="tap" viewBox="0 0 24 24"><path d="M8 13V6a2 2 0 0 1 4 0v5l5 1c3 1 3 3 2 5l-2 5h-7l-6-8c-1-2 1-3 2-2l2 2" stroke-width="2"/></symbol>
+</defs></svg>
+<script type="module" src="./app.js"></script>
+</body></html>

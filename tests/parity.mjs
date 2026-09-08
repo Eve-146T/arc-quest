@@ -1,0 +1,11 @@
+import {chromium} from '@playwright/test';
+import {readFile,writeFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const fixtures=JSON.parse(await readFile('test-results/native-fixtures.json','utf8'));
+const browser=await chromium.launch({headless:true,args:['--no-sandbox'],executablePath:'/home/user1/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome'});
+const page=await browser.newPage();
+await page.goto('http://localhost:4173');
+await page.evaluate(()=>{window.testWorker=new Worker('./engine-worker.js');window.testPending=new Map();window.testReady=new Promise((resolve,reject)=>{testWorker.onmessage=({data})=>{if(data.type==='ready')resolve();if(data.type==='error'){const p=testPending.get(data.requestId);if(p)p.reject(data.error);else reject(data.error)}if(data.type==='result'){testPending.get(data.requestId).resolve(data.result);testPending.delete(data.requestId)}};});window.testId=0;window.callEngine=async payload=>{await testReady;return await new Promise((resolve,reject)=>{const requestId=++testId;testPending.set(requestId,{resolve,reject});testWorker.postMessage({...payload,requestId})})};});
+let count=0,latencies=[];
+try {for(const fixture of fixtures){for(const step of fixture.trace){const t=performance.now();const actual=await page.evaluate(async({game,action})=>await callEngine(action?{type:'action',action}:{type:'start',game}),{game:fixture.id,action:step.action});if(step.action)latencies.push(performance.now()-t);assert.deepEqual(actual.frames.at(-1),step.expected.frame,`${fixture.id} frame at step ${count}`);assert.equal(actual.state,step.expected.state,fixture.id+' state');assert.equal(actual.completed,step.expected.completed,fixture.id+' completion');for(const[k,v]of Object.entries(step.expected.score))assert.deepEqual(actual.score[k],v,`${fixture.id} ${k}`);count++;}console.log('PASS',fixture.id,fixture.trace.length,'states');}
+latencies.sort((a,b)=>a-b);const result={games:fixtures.length,states:count,medianMs:latencies[Math.floor(latencies.length*.5)],p95Ms:latencies[Math.floor(latencies.length*.95)],maxMs:latencies.at(-1)};console.log(JSON.stringify(result));await writeFile('test-results/parity-report.json',JSON.stringify(result,null,2));}finally{await browser.close();}

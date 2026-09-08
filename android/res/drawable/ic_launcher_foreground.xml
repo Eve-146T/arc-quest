@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#2B1F5E" android:pathData="M37,24h34a13,13 0 0 1 13,13v34a13,13 0 0 1 -13,13h-34a13,13 0 0 1 -13,-13v-34a13,13 0 0 1 13,-13z"/>
+    <path android:fillColor="#FFFFFF" android:pathData="M38.5,28.5h31a10,10 0 0 1 10,10v31a10,10 0 0 1 -10,10h-31a10,10 0 0 1 -10,-10v-31a10,10 0 0 1 10,-10z"/>
+    <path android:fillColor="#1E93FF" android:pathData="M36.5,34h7.0a2.5,2.5 0 0 1 2.5,2.5v7.0a2.5,2.5 0 0 1 -2.5,2.5h-7.0a2.5,2.5 0 0 1 -2.5,-2.5v-7.0a2.5,2.5 0 0 1 2.5,-2.5z"/>
+    <path android:fillColor="#FFDC00" android:pathData="M50.5,34h7.0a2.5,2.5 0 0 1 2.5,2.5v7.0a2.5,2.5 0 0 1 -2.5,2.5h-7.0a2.5,2.5 0 0 1 -2.5,-2.5v-7.0a2.5,2.5 0 0 1 2.5,-2.5z"/>
+    <path android:fillColor="#4FCC30" android:pathData="M64.5,34h7.0a2.5,2.5 0 0 1 2.5,2.5v7.0a2.5,2.5 0 0 1 -2.5,2.5h-7.0a2.5,2.5 0 0 1 -2.5,-2.5v-7.0a2.5,2.5 0 0 1 2.5,-2.5z"/>
+    <path android:fillColor="#F93C31" android:pathData="M36.5,48h7.0a2.5,2.5 0 0 1 2.5,2.5v7.0a2.5,2.5 0 0 1 -2.5,2.5h-7.0a2.5,2.5 0 0 1 -2.5,-2.5v-7.0a2.5,2.5 0 0 1 2.5,-2.5z"/>
+    <path android:fillColor="#2B1F5E" android:pathData="M50.5,48h7.0a2.5,2.5 0 0 1 2.5,2.5v7.0a2.5,2.5 0 0 1 -2.5,2.5h-7.0a2.5,2.5 0 0 1 -2.5,-2.5v-7.0a2.5,2.5 0 0 1 2.5,-2.5z"/>
+    <path android:fillColor="#A356D6" android:pathData="M64.5,48h7.0a2.5,2.5 0 0 1 2.5,2.5v7.0a2.5,2.5 0 0 1 -2.5,2.5h-7.0a2.5,2.5 0 0 1 -2.5,-2.5v-7.0a2.5,2.5 0 0 1 2.5,-2.5z"/>
+    <path android:fillColor="#FF851B" android:pathData="M36.5,62h7.0a2.5,2.5 0 0 1 2.5,2.5v7.0a2.5,2.5 0 0 1 -2.5,2.5h-7.0a2.5,2.5 0 0 1 -2.5,-2.5v-7.0a2.5,2.5 0 0 1 2.5,-2.5z"/>
+    <path android:fillColor="#88D8F1" android:pathData="M50.5,62h7.0a2.5,2.5 0 0 1 2.5,2.5v7.0a2.5,2.5 0 0 1 -2.5,2.5h-7.0a2.5,2.5 0 0 1 -2.5,-2.5v-7.0a2.5,2.5 0 0 1 2.5,-2.5z"/>
+    <path android:fillColor="#E53AA3" android:pathData="M64.5,62h7.0a2.5,2.5 0 0 1 2.5,2.5v7.0a2.5,2.5 0 0 1 -2.5,2.5h-7.0a2.5,2.5 0 0 1 -2.5,-2.5v-7.0a2.5,2.5 0 0 1 2.5,-2.5z"/>
+</vector>

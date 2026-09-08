@@ -1,0 +1,9 @@
+node_modules/
+.venv/
+.cache/
+.scratch/
+__pycache__/
+.pytest_cache/
+dist/
+test-results/
+android/build/

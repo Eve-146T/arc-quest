@@ -1,0 +1,19 @@
+{
+  "game_id": "g50t-5849a774",
+  "title": "G50T",
+  "default_fps": 30,
+  "tags": [
+    "keyboard"
+  ],
+  "baseline_actions": [
+    78,
+    175,
+    179,
+    230,
+    96,
+    54,
+    67
+  ],
+  "local_dir": "vendor/environments/g50t/5849a774",
+  "date_downloaded": "2026-09-07T04:38:32.163338+00:00"
+}
