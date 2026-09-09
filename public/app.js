@@ -251,7 +251,8 @@ function renderControls() {
   $$('#controls [data-action]').forEach(b => {
     if (b.dataset.action === '0') {b.onclick = confirmRetry; return;}
     b.addEventListener('pointerdown', e => {e.preventDefault(); act({id: Number(b.dataset.action)});});
-    b.addEventListener('click', e => {if (e.detail === 0) act({id: Number(b.dataset.action)});}); // keyboard and assistive clicks only
+    // Some WebViews give touch clicks detail=0 too. Only non-pointer activation belongs here.
+    b.addEventListener('click', e => {if (e.detail === 0 && !e.pointerType) act({id: Number(b.dataset.action)});});
   });
 }
 function act(action, confirmed = false) {

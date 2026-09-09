@@ -2,7 +2,7 @@
 
 Verified 2026-09-09. The original checkout is preserved in commit `6dd0b23`.
 
-Review build: [Android APK](https://apps.muxu.click/d/w2gt78b9). The repository remains private. [Android launch recording](https://apps.muxu.click/d/98sc587f).
+Review build: [Android APK](https://apps.muxu.click/d/846nh7yi). The repository remains private. [Android launch recording](https://apps.muxu.click/d/98sc587f).
 
 ## Current behavior
 
@@ -41,7 +41,7 @@ Source: [ARC3.Games](https://arc3.games/) and its [public API](https://arc3.game
 | Layouts | `node tests/layouts.mjs`: every one of 25 games at 320×568, 360×640, 390×844, 568×320 and 844×390, including the extra target pill, every control and restart-overlay bounds. All ten picker cards fit. Initial board pixels are identical across viewport changes. The WebView harness also checks larger displays. |
 | Public records | `uv run tests/leaderboard_replay.py`: all 76 retrieved solutions clear the expected level in exactly the recorded count |
 | Android device | Moto G7 Power, Android 15, 360×760 CSS viewport: real touches, light-only settings, restart-overlay cancel/confirm, absent in-game lab, info, hardware back, and app-switch board pixels/layout; no JavaScript errors |
-| Loading/animation regression | `node tests/ui-smoke.mjs`: retired dark preference, conditional targets and scores, cold/warm loaders, cancel without a late game jump, 700ms counter timing, real animated FT09 clear |
+| Loading/animation regression | `node tests/ui-smoke.mjs`: retired dark preference, conditional targets and scores, cold/warm loaders, cancel without a late game jump, 700ms counter timing, real animated FT09 clear, touch-click deduplication and accessibility activation |
 | Packaging | JDK 17, platform/build-tools 35: debug and release-mode review APKs; the latter has WebView debugging disabled |
 
 Device checks use a debug APK, back up local storage and restore it afterward. Evidence is in ignored `test-results/`; exactly four README screenshots are committed in `docs/screenshots/`. Progress used for screenshot examples and the complete-run/diamond UI tests is explicitly seeded fixture data. FT09 gameplay and public-record replay checks execute real engines.

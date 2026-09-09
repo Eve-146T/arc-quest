@@ -7,7 +7,7 @@ src="public/assets/icon-192.png" alt="ARC Quest">
 
 An offline Android app.
 
-[Android APK](https://apps.muxu.click/d/w2gt78b9)
+[Android APK](https://apps.muxu.click/d/846nh7yi)
 
 ## Screenshots
 

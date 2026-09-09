@@ -51,6 +51,10 @@ try {
   await expect(page.locator('#loading')).toBeHidden();
   await page.locator('[data-action="4"]').tap();
   await expect(page.locator('#actions')).toHaveText('1');
+  await page.locator('[data-action="4"]').evaluate(b => b.dispatchEvent(new PointerEvent('click', {bubbles: true, pointerType: 'touch', detail: 0})));
+  await expect(page.locator('#actions')).toHaveText('1');
+  await page.locator('[data-action="4"]').evaluate(b => b.click());
+  await expect(page.locator('#actions')).toHaveText('2');
   await page.click('#back');
   await expect(page.locator('#detail-title')).toHaveText('LS20');
   await page.screenshot({path: 'test-results/ui-smoke-levels.png'});
