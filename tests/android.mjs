@@ -39,7 +39,7 @@ try{
  await evaluate("localStorage.setItem('arc-settings',JSON.stringify({onboarded:true,mode:'sandbox',sound:false,haptic:true}))");
  ws.close();({ws,send}=await launchApp());
  await wait("!document.querySelector('#launch').hidden");await tap('#launch-start');await wait("!document.querySelector('#home').hidden");await sleep(600);
- await tap('.theme-toggle');assert.equal(await evaluate("document.documentElement.dataset.theme"),'dark');report.checks.push('dark theme toggle');
+ assert.equal(await evaluate("document.querySelector('.theme-toggle')"),null);report.checks.push('light-only settings');
  await tap('#sandbox-help');await wait("document.querySelector('#detail-title').textContent==='Sandbox'");adb('shell','input','keyevent','KEYCODE_BACK');await wait("!document.querySelector('#home').hidden");
  await scrollTap('[data-game="ls20"]');await wait("!document.querySelector('#detail').hidden");await tap('[data-level="2"]');await wait("!document.querySelector('#game').hidden",120000);await sleep(400);
  assert.equal(await evaluate("document.querySelector('#target-value').textContent"),'73');await tap('[data-action="4"]');await wait("document.querySelector('#actions').textContent==='1'");

@@ -7,3 +7,8 @@ __pycache__/
 dist/
 test-results/
 android/build/
+*.keystore
+*.jks
+*.apk
+keystore.properties
+local.properties

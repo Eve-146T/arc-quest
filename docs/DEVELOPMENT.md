@@ -12,19 +12,19 @@ uv sync --group test
 npm run dev
 ```
 
-The game runs at `http://localhost:4173`. `npm run build` produces the offline web bundle in `dist/`.
+The local WebView test harness runs at `http://localhost:4173`. It is development tooling, not a supported browser app. `npm run build` bundles assets into `dist/` for the APK. There is no PWA manifest, service worker, web release or browser score-download fallback.
 
 ## Android
 
 ```sh
-ANDROID_SDK_ROOT=/path/to/android-sdk scripts/build-android.sh
+ANDROID_SDK_ROOT=/path/to/android-sdk ARC_REVIEW=1 scripts/build-android.sh
 ```
 
-Requires Java, Android platform 35, build-tools 35.0.0 and `zip`. The output is `android/build/arc-quest.apk`, signed with an ignored local review key. Android 8+ with a current System WebView is required.
+Requires JDK 17, Android platform 35, build-tools 35.0.0 and `zip`. The output is `android/build/arc-quest.apk`, signed with an ignored local review key. Android 8+ with a current System WebView is required.
 
 ## Checks
 
-Keep the development server running for browser tests.
+Keep the development server running for WebView UI tests.
 
 ```sh
 uv run tests/native_fixtures.py
@@ -32,11 +32,12 @@ uv run --group test tests/solve_ft09.py
 npm test
 node tests/parity.mjs
 node tests/levels.mjs
-npm run test:browser
+npm run test:ui
 node tests/layouts.mjs
+node tests/ui-smoke.mjs
 ```
 
-Set `CHROMIUM_PATH` if Chromium is installed somewhere other than the default in `tests/browser.mjs`. `ARC_DEBUG=1 scripts/build-android.sh` builds an inspectable APK for the connected-device checks in `tests/android.mjs`. Those checks back up and restore local storage.
+Set `CHROMIUM_PATH` if Chromium is installed somewhere other than the default in `tests/webview.mjs`. `ARC_DEBUG=1 scripts/build-android.sh` builds an inspectable APK for the connected-device checks in `tests/android.mjs`. Those checks back up and restore local storage.
 
 ## Public diamond records
 
@@ -64,3 +65,17 @@ See [verification](../VERIFICATION.md) for evidence and limitations.
 ## Screenshots and level previews
 
 `uv run scripts/level-previews.py` renders all 183 initial boards without changing engine code. `TMPDIR="$PWD/.scratch" node scripts/screenshots.mjs` captures four README examples from an isolated profile. It uses the downloaded FT09 record sequence for a real completion overlay; run the diamond updater first if that ignored replay evidence is missing.
+
+## Modules
+
+`public/app.js` coordinates saved progress, benchmark flow and engine sessions. `public/ui/` separates navigation/modal lifetimes, home/level/scorecard presentation, intro flow, sound/settings feedback, and board drawing/touch gestures. CSS is split by screen, with shared base rules and responsive refinements loaded in a fixed order. `LaunchScreen.java` handles the native first-frame transition using the [Android SplashScreen API](https://developer.android.com/develop/ui/views/launch/splash-screen), with a native cover on Android 8–11. The small native activity remains the Android lifecycle/asset/score-export bridge. Upstream engine files are excluded from refactoring.
+
+## CI and signing
+
+[Build workflow](../.github/workflows/build.yml) follows the Eve Games playbook using JDK 17, Android platform/build-tools 35 and its Node 24 action majors. This app keeps its existing AAPT2/Java build rather than importing the libGDX reference app's Gradle scaffold. Node and uv prepare the locked test dependencies; Chromium is only the WebView test harness. [setup-node](https://github.com/actions/setup-node) and [setup-uv](https://github.com/astral-sh/setup-uv) use their current documented versions.
+
+Branches, pull requests and manual branch runs execute scoring/UI checks and upload a debug APK. `v*` tags run the same checks, require release signing, verify the shared Eve certificate, and publish `arc-quest-<tag>.apk` to a GitHub release. Prerelease tags create prereleases. Only the release job receives `contents: write`. Repository visibility is never changed by CI.
+
+Configure `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` and `KEY_PASSWORD` before the first tag. No signing secrets are currently installed. The playbook's `setup-signing.sh` can set them when you are ready; it also pushes a release tag. Tagged builds fail if the secrets are absent; they never fall back to the review key. Bump `android/AndroidManifest.xml` versionCode/versionName before each release. No release tag or F-Droid submission is part of this change.
+
+For local release signing, export `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` and `KEY_PASSWORD`, then run `ARC_RELEASE=1 scripts/build-android.sh`. Without signing variables or an explicit `ARC_DEBUG=1` / `ARC_REVIEW=1`, the script produces only `android/build/arc-quest-unsigned.apk`. Keys, caches and APKs are ignored by Git.

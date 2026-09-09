@@ -3,7 +3,7 @@ import {readFile,writeFile} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 const BASE=process.env.BASE_URL||'http://localhost:4173';
 const browser=await chromium.launch({headless:true,args:['--no-sandbox'],executablePath:process.env.CHROMIUM_PATH||'/home/user1/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome'});
-const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
+const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2,serviceWorkers:'block'});
 const page=await context.newPage(), errors=[];
 page.on('pageerror',e=>errors.push(e.message));
 const solution=JSON.parse(await readFile('test-results/ft09-solution.json','utf8'));
@@ -26,7 +26,7 @@ try{
  // Icon states are visually distinct and persist.
  await expect(page.locator('.sound-toggle')).toHaveAttribute('aria-pressed','false');await page.click('.sound-toggle');await expect(page.locator('.sound-toggle')).toHaveAttribute('aria-pressed','true');
  await page.click('.haptic-toggle');await expect(page.locator('.haptic-toggle use')).toHaveAttribute('href','#vibrate-off');await reload();await expect(page.locator('.sound-toggle')).toHaveAttribute('aria-pressed','true');await expect(page.locator('.haptic-toggle')).toHaveAttribute('aria-pressed','false');await page.click('.sound-toggle');
- await page.click('.theme-toggle');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await reload();await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await page.click('.theme-toggle');await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+ await expect(page.locator('.theme-toggle')).toHaveCount(0);
  await page.click('#sandbox-help');await expect(page.locator('#detail-title')).toHaveText('Sandbox');assert.ok(!(await page.locator('#detail-body').textContent()).includes('Diamond'));await page.click('#detail-back');
  console.log('CHECKPOINT', new Date().toISOString());
  // Benchmarks permit only the next game; the percentage explicitly counts cleared levels.
@@ -52,13 +52,13 @@ try{
  await expect(page.locator('#overlay-title')).toHaveText('Level complete');await expect(page.locator('#game-dialog')).toHaveClass(/gold/);await expect(page.locator('#game-dialog use[href="#star"]')).toHaveCount(0);await shot('sandbox-cleared');await expect(page.locator('#game')).toBeVisible();await page.click('#next');await gameOpen('ft09');await page.click('#back');await expect(page.locator('#detail-title')).toHaveText('FT09');await expect(page.locator('[data-level="0"]')).toHaveClass(/gold/);await shot('level-picker');await home();await expect(page.locator('[data-game="ft09"] .badge')).toHaveCount(0);await expect(page.locator('#sandbox-count')).toHaveText('1');
  console.log('CHECKPOINT', new Date().toISOString());
  await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('arc-sandbox-v1'));s.ls20={0:23,1:123};localStorage.setItem('arc-sandbox-v1',JSON.stringify(s));});await reload();await page.click('[data-game="ls20"]');
- await expect(page.locator('[data-level="0"]')).toContainText('22 actions for gold');await expect(page.locator('[data-level="1"]')).not.toContainText('actions for gold');await expect(page.locator('[data-level="1"]')).not.toContainText('Gold');await expect(page.locator('[data-level] use[href="#star"]')).toHaveCount(0);await expect(page.locator('[data-level="2"]')).toHaveAttribute('aria-label',/Not Cleared/);await expect(page.locator('[data-level="2"]')).not.toContainText('actions for gold');
+ await expect(page.locator('[data-level="0"]')).toContainText('22 actions for gold');await expect(page.locator('[data-level="0"] .tile-score')).toContainText('91.5%');await expect(page.locator('[data-level="2"] .tile-score')).toContainText('0.0%');await expect(page.locator('[data-level="1"]')).not.toContainText('actions for gold');await expect(page.locator('[data-level="1"]')).not.toContainText('Gold');await expect(page.locator('[data-level] use[href="#star"]')).toHaveCount(0);await expect(page.locator('[data-level="2"]')).toHaveAttribute('aria-label',/Not Cleared/);await expect(page.locator('[data-level="2"]')).not.toContainText('actions for gold');
  assert.ok(await page.locator('[data-level] img').evaluateAll(images=>images.every(i=>i.complete&&i.naturalWidth===64)));await home();
  // Fixture: LS20 is complete so FT09 is the next benchmark game. FT09 itself is played for real.
  await page.evaluate(()=>{localStorage.setItem('arc-run-v2',JSON.stringify({startedAt:Date.now(),lastGame:'ls20',games:{ls20:{history:[],summary:{state:'WIN',score:100,levels_completed:7,actions:0}}}}));localStorage.setItem('arc-settings',JSON.stringify({onboarded:true,mode:'run'}));});await reload();await expect(page.locator('[data-game="ft09"]')).toBeEnabled();await expect(page.locator('[data-game="vc33"]')).toBeDisabled();await page.click('#continue-run');await gameOpen('ft09');
  for(let i=0;i<solution.length;i++){await clickCell(solution[i]);await count(i+1);}
  await expect(page.locator('#detail-title')).toHaveText('Game complete!');await page.click('#see-run');await expect(page.locator('.score-big')).toContainText('100.0');
- const download=page.waitForEvent('download');await page.click('#export');await (await download).saveAs('test-results/exported-scorecard.json');const exported=JSON.parse(await readFile('test-results/exported-scorecard.json'));assert.equal(exported.currentRun.games.find(g=>g.game_id.startsWith('ft09')).current.actions,75);
+ await page.evaluate(()=>window.AndroidGame={exportScore:json=>window.exportedScore=JSON.parse(json),haptic:()=>{}});await page.click('#export');const exported=await page.evaluate(()=>window.exportedScore);assert.equal(exported.currentRun.games.find(g=>g.game_id.startsWith('ft09')).current.actions,75);
  await page.click('#detail-back');await expect(page.locator('#detail-title')).toHaveText('Game complete!');await page.click('#go-home');await expect(page.locator('[data-game="vc33"]')).toBeEnabled();await expect(page.locator('#run-score')).toHaveText((13/183*100).toFixed(1));await expect(page.locator('#record')).toBeHidden();
  console.log('CHECKPOINT', new Date().toISOString());
  // A fully completed run alone reveals the record. Every sandbox gold reveals saved diamonds.
@@ -79,7 +79,5 @@ try{
   await sandbox('ar25');for(const selector of ['#board','#back','[data-action="0"]']){const r=await page.locator(selector).boundingBox();assert.ok(r.x>=0&&r.y>=0&&r.x+r.width<=width+1&&r.y+r.height<=height+1,`overflow ${selector} ${width}x${height}: ${JSON.stringify(r)}`);}await shot(`game-${width}x${height}`);await home();layouts.push(`${width}x${height}`);
  }
  console.log('CHECKPOINT', new Date().toISOString());
- // Offline reload includes the record snapshot and engine.
- await page.evaluate(async()=>{await navigator.serviceWorker.ready;});await context.setOffline(true);await reload();await sandbox('ls20');await expect(page.locator('#board')).toBeVisible();await context.setOffline(false);
- assert.deepEqual(errors,[]);const report={passed:true,layouts,errors,checks:['sequential benchmark and legacy order','progress versus efficiency labels','completed records only','full pages and nested back','touch and reset confirmation','settings persistence','sandbox gold and retroactive diamonds','all ten picker levels fit','app-switch gesture cancellation','real FT09 six-level completion and score export','offline cold reload']};console.log(JSON.stringify(report,null,2));await writeFile('test-results/browser-report.json',JSON.stringify(report,null,2));
+ assert.deepEqual(errors,[]);const report={passed:true,layouts,errors,checks:['sequential benchmark and legacy order','progress versus efficiency labels','completed records only','full pages and nested back','touch and reset confirmation','settings persistence','sandbox gold and retroactive diamonds','all ten picker levels fit','app-switch gesture cancellation','real FT09 six-level completion and score export']};console.log(JSON.stringify(report,null,2));await writeFile('test-results/browser-report.json',JSON.stringify(report,null,2));
 }catch(error){await page.screenshot({path:'test-results/browser-failure.png'});throw error;}finally{await browser.close();}

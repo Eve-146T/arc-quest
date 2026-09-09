@@ -1,0 +1,43 @@
+/* ---- Sheets: a white card on a dim scrim, popping in. */
+@keyframes sheet-in{from{opacity:0;transform:translateY(40px) scale(.94)}to{opacity:1;transform:none}}
+.dialog-stack{display:flex;flex-direction:column;gap:14px}
+.dialog-stack>.chunk{width:100%}
+.dialog-note{font-size:16px;line-height:1.45;color:var(--muted);text-align:center}
+.about-copy{font-size:16px;line-height:1.5;color:#756580}
+.about-copy p+p{margin-top:14px}
+.about-copy strong{color:var(--ink)}
+.about-copy .formula{margin:16px 0;background:var(--card-alt);box-shadow:none}
+.score-big{font-size:68px;font-weight:700;text-align:center;line-height:1.1;color:#8252d2}
+.score-big small{font-size:36px}
+.score-label{text-align:center;color:var(--muted);font-size:16px;margin:6px 0 18px}
+.score-list{display:flex;flex-direction:column;gap:8px;margin:14px 0}
+.score-row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card-alt);padding:12px 14px;border-radius:13px}
+.score-row strong{font-weight:600}
+.score-row small{color:var(--muted)}
+.score-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:15px}
+.score-table th{font-weight:500;color:var(--muted);font-size:13px}
+.score-table td,.score-table th{padding:9px 5px;text-align:right;border-bottom:1px solid #e9e2f5}
+.score-table th:first-child,.score-table td:first-child{text-align:left}
+.win-art{display:flex;justify-content:center;margin:4px 0 12px}
+.win-art .icon{width:76px;height:76px;animation:cell-pop .6s .1s var(--pop)}
+.error-detail{font-family:monospace;font-size:12px;max-height:130px;overflow:auto;user-select:text}
+
+.overlay{position:fixed;inset:0;background:#140b3a99;backdrop-filter:blur(4px);display:grid;place-items:center;padding:20px;z-index:5;animation:fade-in .2s both}
+.sheet{background:var(--card);border-radius:28px;padding:30px;width:100%;max-width:380px;box-shadow:0 8px #b9aed4;text-align:center;animation:sheet-in .32s var(--pop) both}
+.sheet h2{font-size:27px;margin:18px 0 8px}
+.sheet p{font-size:17px;color:var(--muted)}
+.loading-track{background:#e6def3;height:13px;border-radius:10px;overflow:hidden;margin:22px 0 8px}
+#loading-progress{height:100%;width:10%;background:var(--mint);transition:width .3s}
+.loading-dots{display:flex;align-items:end;justify-content:center;gap:10px;height:60px}
+.loading-dots i{display:block;width:24px;height:24px;border-radius:50%;background:var(--mint);box-shadow:0 4px #1f9c71;animation:bounce .7s infinite alternate}
+.loading-dots i:nth-child(2){background:var(--yellow);box-shadow:0 4px #ad8f2b;animation-delay:.18s}
+.loading-dots i:nth-child(3){background:var(--grape);box-shadow:0 4px #6a3ead;animation-delay:.36s}
+@keyframes bounce{to{transform:translateY(-22px)}}
+#notice{position:fixed;z-index:10;bottom:max(25px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);max-width:90vw;width:max-content;padding:13px 20px;border-radius:15px;background:var(--ink);color:var(--card);text-align:center;font-size:16px;pointer-events:none;opacity:0;transition:opacity .15s}
+#notice.show{opacity:1}
+
+/* Confetti burst on cleared levels and wins. */
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:20;overflow:hidden}
+#confetti i{position:absolute;left:50%;top:45%;width:12px;height:12px;border-radius:3px;background:var(--c);animation:burst 1.1s cubic-bezier(.15,.8,.4,1) forwards}
+@keyframes burst{0%{transform:translate(0,0) rotate(0);opacity:1}100%{transform:translate(var(--dx),var(--dy)) rotate(var(--r));opacity:0}}
+

@@ -13,13 +13,13 @@ async function bounds(selector,width,height){
 try{
  await page.goto(process.env.BASE_URL||'http://localhost:4173');await page.evaluate(games=>{localStorage.setItem('arc-settings',JSON.stringify({onboarded:true,mode:'sandbox'}));localStorage.setItem('arc-sandbox-v1',JSON.stringify(Object.fromEntries(games.map(g=>[g.id,{0:g.baseline[0]+1}]))));},games);await page.reload();await page.click('#launch-start');
  for(const [width,height] of [[320,568],[360,640],[390,844],[568,320],[844,390]]){
-  await page.setViewportSize({width,height});await page.click('.theme-toggle');
+  await page.setViewportSize({width,height});
   for(const g of games){
    await page.click(`[data-game="${g.id}"]`);await bounds('#detail-back,[data-level]',width,height);
    const last=page.locator('[data-level]').last();assert.ok(await last.isVisible());
    await page.click('[data-level="0"]');await expect(page.locator('#game')).toBeVisible({timeout:90000});await expect(page.locator('#playing-name')).toHaveText(g.id.toUpperCase());
    await bounds('#game .top-bar button,#board,.stats .pill,#controls button,#level-dots',width,height);await expect(page.locator('#mode-badge')).toBeHidden();
-   const frame=await page.locator('#board').evaluate(c=>c.toDataURL());if(pixels.has(g.id))assert.equal(frame,pixels.get(g.id),'Theme/viewport must not change puzzle pixels');else pixels.set(g.id,frame);
+   const frame=await page.locator('#board').evaluate(c=>c.toDataURL());if(pixels.has(g.id))assert.equal(frame,pixels.get(g.id),'Viewport must not change puzzle pixels');else pixels.set(g.id,frame);
    await page.click('[data-action="0"]');await expect(page.locator('#game-dialog')).toBeVisible();await bounds('#game-dialog,#game-dialog button',width,height);await page.keyboard.press('Escape');await expect(page.locator('#game-dialog')).toBeHidden();
    await page.click('#back');await page.click('#detail-back');
   }

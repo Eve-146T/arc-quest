@@ -13,11 +13,13 @@ import java.util.HashMap;
 /** Self-contained offline game. Only bundled content can execute in this WebView. */
 public final class MainActivity extends Activity {
     private WebView web;
+    private LaunchScreen launchScreen;
     private String pendingExport;
     private static final String HOST="appassets.androidplatform.net";
     @Override public void onCreate(Bundle state){
         super.onCreate(state);
-        web=new WebView(this);web.setBackgroundColor(getPreferences(MODE_PRIVATE).getBoolean("dark",false)?0xff191827:0xffffe4f3);setContentView(web);
+        web=new WebView(this);web.setBackgroundColor(0xffffe4f3);
+        launchScreen=new LaunchScreen(this,web);
         WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);
         s.setAllowFileAccess(false);s.setAllowContentAccess(false);s.setMediaPlaybackRequiresUserGesture(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);s.setSupportZoom(false);
@@ -33,9 +35,6 @@ public final class MainActivity extends Activity {
             }
         });
         web.setWebChromeClient(new WebChromeClient());
-        ServiceWorkerController.getInstance().setServiceWorkerClient(new ServiceWorkerClient(){
-            @Override public WebResourceResponse shouldInterceptRequest(WebResourceRequest r){return asset(r.getUrl());}
-        });
         // Development builds enable inspectability only when explicitly marked debuggable.
         if((getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0)WebView.setWebContentsDebuggingEnabled(true);
         web.loadUrl("https://"+HOST+"/index.html");immersive();
@@ -45,12 +44,12 @@ public final class MainActivity extends Activity {
         String p=u.getPath();if(p==null||p.equals("/"))p="/index.html";
         if(p.contains(".."))return null;
         String mime="application/octet-stream";
-        if(p.endsWith(".html"))mime="text/html";else if(p.endsWith(".js"))mime="text/javascript";else if(p.endsWith(".css"))mime="text/css";else if(p.endsWith(".json")||p.endsWith(".webmanifest"))mime="application/json";else if(p.endsWith(".wasm"))mime="application/wasm";else if(p.endsWith(".svg"))mime="image/svg+xml";else if(p.endsWith(".png"))mime="image/png";else if(p.endsWith(".ttf"))mime="font/ttf";
+        if(p.endsWith(".html"))mime="text/html";else if(p.endsWith(".js"))mime="text/javascript";else if(p.endsWith(".css"))mime="text/css";else if(p.endsWith(".json"))mime="application/json";else if(p.endsWith(".wasm"))mime="application/wasm";else if(p.endsWith(".svg"))mime="image/svg+xml";else if(p.endsWith(".png"))mime="image/png";else if(p.endsWith(".ttf"))mime="font/ttf";
         try{return new WebResourceResponse(mime,"UTF-8",getAssets().open(p.substring(1)));}
         catch(IOException e){return new WebResourceResponse("text/plain","UTF-8",404,"Not found",new HashMap<>(),new ByteArrayInputStream(new byte[0]));}
     }
     public final class NativeActions{
-        @JavascriptInterface public void setDarkMode(boolean dark){runOnUiThread(()->{getPreferences(MODE_PRIVATE).edit().putBoolean("dark",dark).apply();web.setBackgroundColor(dark?0xff191827:0xffffe4f3);});}
+        @JavascriptInterface public void launchReady(){runOnUiThread(()->web.postVisualStateCallback(0,new WebView.VisualStateCallback(){@Override public void onComplete(long id){launchScreen.onReady();}}));}
         @JavascriptInterface public void haptic(boolean win){runOnUiThread(()->web.performHapticFeedback(win?HapticFeedbackConstants.LONG_PRESS:HapticFeedbackConstants.KEYBOARD_TAP));}
         @JavascriptInterface public void exportScore(String json){
             if(json==null||json.length()>5000000)return;

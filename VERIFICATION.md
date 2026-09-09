@@ -2,18 +2,22 @@
 
 Verified 2026-09-09. The original checkout is preserved in commit `6dd0b23`.
 
-Review builds: [web](https://apps.muxu.click/d/9qgcg8e8) · [Android APK](https://apps.muxu.click/d/qwzp7wzw).
+Review build: [Android APK](https://apps.muxu.click/d/w2gt78b9). The repository remains private. [Android launch recording](https://apps.muxu.click/d/98sc587f).
 
 ## Current behavior
 
 - Sandbox is the first tab and the default for new players. Every game and level is available there. Benchmark only allows the first unfinished game; completed games open their scorecards.
 - Level selection, lab help, info and scorecards use full screens with a back button. Restart and sandbox completion are native modal overlays over the board, with focus containment and Escape/hardware-back dismissal. Completion shows actions and a personal best, with no star system. The in-game sandbox lab button is removed.
-- Each sandbox level has its own initial-board preview. All ten levels of LF52 fit without scrolling at every tested size. The three-column picker shows large previews, level numbers and best action counts. Gold is only the background color; there are no gold labels or stars on tiles. Uncleared status remains in accessible labels. A numerical gold target appears only after a completed attempt above that target.
+- Each sandbox level has its own initial-board preview. All ten levels of LF52 fit without scrolling at every tested size. The three-column picker shows board previews, level numbers, best action counts and per-level action-efficiency percentages (0% until cleared, 100% at the human count, up to 115%). Gold is only the background color; there are no gold labels or stars on tiles. Uncleared status remains in accessible labels. A numerical gold target appears only after a completed attempt above that target.
 - Removed per-game corner counters and percentages, redundant cleared/gold prose and the picker explanation. Benchmark progress reads “% complete” and means levels cleared / 183. In-game “game score” is the official action-efficiency score, not completion or rank.
 - The home trophy stays hidden until a full run is completed. Partial/deleted runs never become records. Completed records survive run deletion.
 - Red trash controls ask for confirmation. A benchmark retry adds one action; a sandbox retry starts a new attempt. Blue/white sound and haptic toggles use distinct on/off icons and persist.
-- The settings bar uses 42px buttons with consistent 10px icon padding. The info button has its raised background again, without shaking. A persistent dark-mode toggle sits beside haptics; theme changes leave the original game palette unchanged.
-- Navigation fades take 110ms, tab transitions 160–180ms. The old staggered card entrance is removed; the logo moves gently and reduced-motion preferences are respected. The viewport margin/overflow reset is restored.
+- The settings bar uses 42px buttons with consistent 10px icon padding. The info button has its raised background again, without shaking. Dark mode and its saved preference are removed. The Android shell always starts with the light background; original game pixels remain unchanged.
+- Navigation fades take 110ms, tab transitions 160–180ms, and the home counters again take 700ms. The old staggered card entrance is removed; the logo moves gently and reduced-motion preferences are respected. The viewport margin/overflow reset is restored.
+- Every level launch shows an animated loader over the current screen until the first board is ready. Home is never exposed between picker and game; cancelling the load ignores late engine results.
+- Android is the only supported app. PWA metadata, service-worker caching, web publishing smoke tests and browser export/haptic fallbacks are removed. A local Chromium harness remains for testing the bundled WebView UI.
+- Navigation, home/level/scorecard views, intro, settings/feedback and board rendering/input are split into focused modules under `public/ui/`; CSS is split by screen. The app controller retains session/progress ownership, and the small Android activity retains lifecycle/asset/native bridge responsibilities. Upstream game classes were reviewed as vendor code and left intact.
+- Native launch uses a 580ms animated puzzle icon inside the splash mask, a pink background, and a 180ms exit once the WebView has rendered. A cold-start device recording verifies the icon stays unclipped and the app appears without a gray/blank flash. Android 8–11 use the same animated artwork in a native cover; that fallback is build-checked but was not exercised on an older device.
 - App suspension clears gestures, finishes finite UI animations and redraws the final engine frame. Stable Android layout flags prevent system-bar resizing during app switching.
 
 ## Public diamond records
@@ -30,14 +34,15 @@ Source: [ARC3.Games](https://arc3.games/) and its [public API](https://arc3.game
 
 | Check | Evidence |
 | --- | --- |
-| JavaScript syntax and whitespace | `node --check` on changed modules; `git diff --check` |
-| Scoring and progress rules | `npm test`: 1,000 official scoring fixtures, benchmark ordering, complete-only records, version matching, hidden/retroactive diamond awards and current-attempt ratings |
-| Touch browser integration | `npm run test:browser`: controls, swipe versus tap, restart/result overlays, blocked underlying inputs, cancel/confirm restart, dark-mode reload persistence, next-game restriction, nested back, conditional gold targets, settings, record visibility, diamond unlock, export and offline cold reload |
-| Full game | FT09: six levels, 75 actions, 100% official game score, played through the browser |
-| Layouts | `node tests/layouts.mjs`: every one of 25 games at 320×568, 360×640, 390×844, 568×320 and 844×390, including the extra target pill, every control and restart-overlay bounds. All ten picker cards fit. Initial board pixels are identical across theme/viewport changes. General browser checks also cover tablet and desktop. |
+| JavaScript syntax and whitespace | `node --check` on changed modules; `bash -n scripts/build-android.sh`; `git diff --check` |
+| Scoring and progress rules | `npm test`: 1,000 official scoring fixtures, benchmark ordering, complete-only records, version matching, hidden/retroactive diamond awards, current-attempt ratings, and every new sandbox percentage compared with the official per-level fixture results |
+| WebView UI integration | `npm run test:ui`: controls, swipe versus tap, restart/result overlays, blocked underlying inputs, cancel/confirm restart, next-game restriction, nested back, conditional gold targets, settings, record visibility, diamond unlock and native score-export payload |
+| Full game | FT09: six levels, 75 actions, 100% official game score, played through the WebView UI harness |
+| Layouts | `node tests/layouts.mjs`: every one of 25 games at 320×568, 360×640, 390×844, 568×320 and 844×390, including the extra target pill, every control and restart-overlay bounds. All ten picker cards fit. Initial board pixels are identical across viewport changes. The WebView harness also checks larger displays. |
 | Public records | `uv run tests/leaderboard_replay.py`: all 76 retrieved solutions clear the expected level in exactly the recorded count |
-| Android device | Moto G7 Power, Android 15, 360×760 CSS viewport: real touches, dark mode, restart-overlay cancel/confirm, absent in-game lab, info, hardware back, and app-switch board pixels/layout; no JavaScript errors |
-| Packaging | Offline static build and signed Android APK; release build has WebView debugging disabled |
+| Android device | Moto G7 Power, Android 15, 360×760 CSS viewport: real touches, light-only settings, restart-overlay cancel/confirm, absent in-game lab, info, hardware back, and app-switch board pixels/layout; no JavaScript errors |
+| Loading/animation regression | `node tests/ui-smoke.mjs`: retired dark preference, conditional targets and scores, cold/warm loaders, cancel without a late game jump, 700ms counter timing, real animated FT09 clear |
+| Packaging | JDK 17, platform/build-tools 35: debug and release-mode review APKs; the latter has WebView debugging disabled |
 
 Device checks use a debug APK, back up local storage and restore it afterward. Evidence is in ignored `test-results/`; exactly four README screenshots are committed in `docs/screenshots/`. Progress used for screenshot examples and the complete-run/diamond UI tests is explicitly seeded fixture data. FT09 gameplay and public-record replay checks execute real engines.
 
@@ -45,4 +50,10 @@ Device checks use a debug APK, back up local storage and restore it afterward. E
 
 No upstream games, baselines, palette, bridge or scoring modules were changed. Per-level thumbnails were rendered from all 183 original initial frames with the same reset/seed convention as sandbox. The baseline commit contains the earlier 25-game parity and 183-level entry checks; those engines are unchanged in this revision.
 
-The Android app is a bundled WebView/Python WebAssembly game, requiring Android 8+ and a current System WebView. Web offline play requires one successful cache installation. Scores are local practice, not official submissions. This verifies the public game set only.
+The Android app is a bundled WebView/Python WebAssembly game, requiring Android 8+ and a current System WebView. Scores are local practice, not official submissions. This verifies the public game set only.
+
+## CI
+
+[GitHub Actions](https://github.com/Eve-146T/arc-agi3/actions) regenerates the official scoring fixtures, runs Node checks and the WebView smoke test, then builds and uploads an Android debug APK for branches/PRs. Release tags run the same checks, require the four Eve signing secrets, verify the shared signing certificate and create a GitHub release. The workflow uses the playbook's action majors, JDK 17 and Android SDK 35. The existing AAPT2/Java builder is retained because this is a WebView app, not the libGDX reference app.
+
+No signing secrets or release tags were added; no visibility change or F-Droid submission was made. The release job is configured but cannot be exercised with the shared Eve key until its secrets are supplied. Local review builds use the existing ignored review key. Unsigned/default builds and explicit release signing are separate, so CI cannot accidentally publish a review-signed release.

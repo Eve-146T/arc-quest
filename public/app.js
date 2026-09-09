@@ -1,13 +1,15 @@
 import {sandboxRating, allGold, nextRunGame, completedRecord} from './progress.js';
-const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
-const icon = (name, cls = '') => `<svg class="icon ${cls}" aria-hidden="true"><use href="#${name}"/></svg>`;
-const safeRead = (key, fallback) => {try {return JSON.parse(localStorage.getItem(key)) ?? fallback;} catch {return fallback;}};
-const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const ARC = ['#FFFFFF', '#CCCCCC', '#999999', '#666666', '#333333', '#000000', '#E53AA3', '#FF7BCC', '#F93C31', '#1E93FF', '#88D8F1', '#FFDC00', '#FF851B', '#921231', '#4FCC30', '#A356D6'];
-const CANDY = ['#1E93FF', '#FFDC00', '#4FCC30', '#F93C31', '#A356D6', '#FF851B', '#88D8F1', '#E53AA3', '#2EE6A6'];
-
+import {$, $$, icon, safeRead, reduced} from './ui/common.js';
+import {save, notice, feedback, bindSettings, updateSettings as renderSettings, confetti, countUp, suspendSound} from './ui/feedback.js';
+import {show, screenName, detailPage, closeDetails, goDetailBack, gameOverlay, closeGameOverlay, dismissGameOverlay} from './ui/navigation.js';
+import {launch, onboarding, pageIndex, bindIntro} from './ui/intro.js';
+import {draw, drawAnimationFrame, bindBoard, cancelGesture} from './ui/board.js';
+import {benchmarkHero, sandboxHero, gameCard} from './ui/home.js';
+import {levelGrid} from './ui/levels.js';
+import {gameScorecard, scoreOverview} from './ui/scorecards.js';
 // ---- persistent state
-let settings = {sound: false, haptic: true, dark: false, onboarded: false, mode: 'sandbox', ...safeRead('arc-settings', {})};
+let settings = {sound: false, haptic: true, onboarded: false, mode: 'sandbox', ...safeRead('arc-settings', {})};
+delete settings.dark; // Remove the retired preference without touching saved progress.
 if (!['run', 'sandbox'].includes(settings.mode)) settings.mode = 'sandbox';
 // One benchmark run at a time: per game, the action history and the official summary.
 let run = safeRead('arc-run-v2', null);
@@ -24,88 +26,9 @@ let state = null, playing = false, loadingGame = false, sessionId = null, frames
 let session = null; // {game, level, sandbox, attempt}
 const metrics = {latencies: [], inputCount: 0, errors: [], boot: {}};
 window.arcMetrics = metrics;
-let audioContext, toastTimer, launchTimer;
-
-function save(key, data) {try {localStorage.setItem(key, JSON.stringify(data));} catch {notice('Storage is full. Keep this tab open to retain your run.');}}
 const persistRun = () => save('arc-run-v2', run);
-function notice(text) {$('#notice').textContent = text; $('#notice').classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#notice').classList.remove('show'), 2600);}
-function feedback(win = false) {
-  if (settings.haptic) {if (window.AndroidGame) window.AndroidGame.haptic(win); else if (navigator.vibrate) navigator.vibrate(win ? [25, 30, 35] : 8);}
-  if (!settings.sound) return;
-  try {
-    audioContext ??= new (window.AudioContext || window.webkitAudioContext)(); audioContext.resume();
-    const osc = audioContext.createOscillator(), gain = audioContext.createGain(); osc.connect(gain); gain.connect(audioContext.destination); osc.type = 'sine';
-    osc.frequency.setValueAtTime(win ? 660 : 440, audioContext.currentTime); osc.frequency.exponentialRampToValueAtTime(win ? 990 : 330, audioContext.currentTime + .09);
-    gain.gain.setValueAtTime(.045, audioContext.currentTime); gain.gain.exponentialRampToValueAtTime(.001, audioContext.currentTime + .13); osc.start(); osc.stop(audioContext.currentTime + .14);
-  } catch {}
-}
-function updateSettings() {
-  save('arc-settings', settings);
-  document.documentElement.dataset.theme = settings.dark ? 'dark' : 'light';
-  window.AndroidGame?.setDarkMode?.(settings.dark);
-  $('meta[name="theme-color"]').content = settings.dark ? '#191827' : '#ffe4f3';
-  $$('.theme-toggle').forEach(b => {b.innerHTML = icon(settings.dark ? 'sun' : 'moon'); b.setAttribute('aria-pressed', String(settings.dark)); b.setAttribute('aria-label', `Turn dark mode ${settings.dark ? 'off' : 'on'}`);});
-  $$('.sound-toggle').forEach(b => {b.innerHTML = icon(settings.sound ? 'sound-on' : 'sound-off'); b.setAttribute('aria-pressed', String(settings.sound)); b.setAttribute('aria-label', `Turn sound ${settings.sound ? 'off' : 'on'}`);});
-  $$('.haptic-toggle').forEach(b => {b.innerHTML = icon(settings.haptic ? 'vibrate' : 'vibrate-off'); b.setAttribute('aria-pressed', String(settings.haptic)); b.setAttribute('aria-label', `Turn vibration ${settings.haptic ? 'off' : 'on'}`);});
-}
-function confetti(n = 28) {
-  if (reduced) return;
-  const box = $('#confetti'); box.innerHTML = '';
-  for (let i = 0; i < n; i++) {
-    const p = document.createElement('i'); const a = Math.random() * Math.PI * 2, d = 120 + Math.random() * 220;
-    p.style.setProperty('--c', CANDY[i % CANDY.length]); p.style.setProperty('--dx', `${Math.cos(a) * d}px`); p.style.setProperty('--dy', `${Math.sin(a) * d - 80}px`); p.style.setProperty('--r', `${(Math.random() - .5) * 720}deg`);
-    p.style.animationDelay = `${Math.random() * 120}ms`; box.appendChild(p);
-  }
-  setTimeout(() => box.innerHTML = '', 1400);
-}
-function countUp(el, to, decimals = 1, suffix = '') {
-  const from = Number(el.dataset.value ?? 0); el.dataset.value = to;
-  if (reduced || from === to) {el.textContent = to.toFixed(decimals) + suffix; return;}
-  const t0 = performance.now(), dur = 180;
-  const tick = t => {const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = (from + (to - from) * e).toFixed(decimals) + suffix; if (k < 1) requestAnimationFrame(tick);};
-  requestAnimationFrame(tick);
-}
-
-// ---- screens
-const screens = ['launch', 'onboarding', 'home', 'game', 'detail'];
-let screenName = 'launch', detailStack = [], detailReturn = null;
-function show(name, back = false) {
-  const changed = screenName !== name;
-  screenName = name;
-  for (const s of screens) $('#' + s).hidden = s !== name;
-  if (name !== 'launch') clearInterval(launchTimer);
-  if (changed && !reduced) {const el = $('#' + name); el.getAnimations().forEach(a => a.cancel()); el.animate([{opacity: .72}, {opacity: 1}], {duration: 110, easing: 'ease-out'});}
-}
-
-// Launch: a 6×6 puzzle that solves itself while the engine warms up.
-function launch() {
-  const grid = $('#launch-grid'); grid.innerHTML = Array.from({length: 36}, (_, i) => `<i style="--c:${CANDY[(i * 7) % CANDY.length]};--d:${(i % 6 + Math.floor(i / 6)) * 60 + 200}ms"></i>`).join('');
-  const cells = [...grid.children];
-  launchTimer = setInterval(() => {if (reduced) return; const c = cells[Math.floor(Math.random() * cells.length)]; c.style.setProperty('--c', CANDY[Math.floor(Math.random() * CANDY.length)]); c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop');}, 380);
-  show('launch');
-}
-$('#launch-start').onclick = () => {feedback(); if (settings.onboarded) home(); else onboarding(0);};
-
-// Onboarding: what the games are, how to play, how scoring works, and which mode to start in.
-const pages = [
-  {title: 'Nobody tells you the rules.', text: 'These are the 25 original ARC-AGI-3 games, the puzzles used to test AI. Poke around, notice what changes, and work out each game as you go.', art: () => `<div class="mini-board">${Array.from({length: 64}, (_, i) => `<i style="--c:${[9, 11, 14, 8, 5, 5, 5, 6][(i * 3 + Math.floor(i / 8)) % 8] === 5 ? '#111' : ARC[[9, 11, 14, 8, 5, 5, 5, 6][(i * 3 + Math.floor(i / 8)) % 8]]};--d:${(i % 8 + Math.floor(i / 8)) * 55}ms"></i>`).join('')}</div>`},
-  {title: 'Tap, swipe, press.', text: 'Some games move with the d-pad or a swipe. Some react to taps on the board. A few have a special action or undo. Only the controls a game supports are shown, and reset is always there.', art: () => `<div class="art-controls"><div class="finger"><div class="mini-board">${Array.from({length: 64}, (_, i) => `<i style="--c:${i % 9 === 0 ? '#1E93FF' : '#181818'};--d:${i * 8}ms"></i>`).join('')}</div><span class="tip"></span></div><div><div class="dpad"><span class="chip white" data-action="1">${icon('up')}</span><span class="chip white" data-action="2">${icon('down')}</span><span class="chip white" data-action="3">${icon('left')}</span><span class="chip white" data-action="4">${icon('right')}</span></div></div></div>`},
-  {title: 'Every action counts.', text: 'Each level was solved by a human first. Match their action count for 100%, beat it for up to 115%. Retrying a level costs one action.', art: () => `<div class="art-score"><div class="bar-row"><span>Human</span><b style="transform-origin:left"></b><small>10</small></div><div class="bar-row you"><span>You</span><b style="width:80%"></b><small>8</small></div><div class="formula">(10 ÷ 8)² = 115%</div></div>`},
-  {title: 'Pick your mode.', text: 'You can switch on the home screen any time.', art: () => `<div class="mode-cards"><button class="mode-card run" data-pick="run">${icon('flag')}<span><strong>BENCHMARK</strong><small>One run at a time across all 25 games, graded like the real thing. Continue from the menu, or reset the whole run whenever you want.</small></span></button><button class="mode-card sandbox" data-pick="sandbox">${icon('flask')}<span><strong>SANDBOX</strong><small>Jump into any level of any game and clear it in as few actions as you can. Beat the human count to earn gold.</small></span></button></div>`},
-];
-let pageIndex = 0;
-function onboarding(i) {
-  pageIndex = i; show('onboarding');
-  const last = i === pages.length - 1, p = pages[i];
-  $('#onboard-pages').innerHTML = last
-    ? `<div class="page modes"><div><h2>${p.title}</h2><p style="margin-top:8px">${p.text}</p></div><div class="art">${p.art()}</div></div>`
-    : `<div class="page"><div class="art">${p.art()}</div><div><h2>${p.title}</h2><p style="margin-top:10px">${p.text}</p></div></div>`;
-  $('#onboard-dots').innerHTML = pages.map((_, k) => `<i class="${k === i ? 'on' : ''}"></i>`).join('');
-  $('#onboard-next').hidden = last; $('#onboard-skip').hidden = last;
-  $$('[data-pick]').forEach(b => b.onclick = () => {feedback(true); settings.mode = b.dataset.pick; settings.onboarded = true; updateSettings(); confetti(20); home();});
-}
-$('#onboard-next').onclick = () => {feedback(); const page = $('#onboard-pages .page'); if (!page || reduced) return onboarding(pageIndex + 1); page.classList.add('out'); setTimeout(() => onboarding(pageIndex + 1), 180);};
-$('#onboard-skip').onclick = () => {feedback(); onboarding(pages.length - 1);};
+const updateSettings = () => renderSettings(settings);
+bindSettings(settings);
 
 // ---- scores and progress
 const gameOf = id => games.find(g => g.id === id);
@@ -126,7 +49,7 @@ const sandboxGold = () => games.reduce((a, g) => a + g.baseline.filter((_, i) =>
 function segments(cls, levels, classOf, extra = '') {return `<span class="segments ${cls}" aria-hidden="true">${Array.from({length: levels}, (_, i) => `<i class="${classOf(i)}"></i>`).join('')}${extra}</span>`;}
 
 function home() {
-  closeGameOverlay(); closeDetails(); playing = false; framesToken++; pointer = null; show('home', true);
+  closeGameOverlay(); closeDetails(); playing = false; framesToken++; cancelGesture(); show('home', true);
   $('.mode-switch').dataset.mode = settings.mode; $$('.mode-switch [data-mode]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === settings.mode)));
   const best = bestRun(); $('#record').hidden = !best;
   $('#best-score').innerHTML = best ? `${best.score.toFixed(1)}<small>%</small>` : '';
@@ -137,14 +60,14 @@ function renderHero() {
   if (settings.mode === 'run') {
     const best = bestRun(), levels = runLevels(), started = runStarted();
     hero.className = 'hero run';
-    hero.innerHTML = `<div class="hero-top"><span class="hero-label">${started ? 'CURRENT RUN' : 'NEW RUN'}</span>${best ? `<span class="hero-best">${icon('trophy')}Best ${best.score.toFixed(1)}%</span>` : ''}</div><div class="hero-score"><b id="run-score">0.0</b><small>% complete</small></div><div class="hero-bar"><i style="width:${(levels / total * 100).toFixed(1)}%"></i></div><div class="hero-meta"><span>${levels} / ${total} levels</span><span>${games.filter(g => isWon(g.id)).length} / ${games.length} games</span></div><div class="hero-actions"><button id="continue-run" class="chunk mint">${icon('play-icon')}${started ? 'CONTINUE RUN' : 'START RUN'}</button>${started ? `<button id="reset-run" class="chip berry" aria-label="Delete run">${icon('trash')}</button>` : ''}</div>`;
+    hero.innerHTML = benchmarkHero({started, best, levels, total, won: games.filter(g => isWon(g.id)).length, count: games.length});
     countUp($('#run-score'), levels / total * 100);
     $('#continue-run').onclick = () => {feedback(); continueRun();};
     $('#reset-run')?.addEventListener('click', () => {feedback(); confirmResetRun();});
   } else {
     const cleared = sandboxCleared(), gold = sandboxGold();
     hero.className = 'hero sandbox';
-    hero.innerHTML = `<div class="hero-top"><button id="sandbox-help" class="quiet-button" aria-label="About sandbox">${icon('flask')}</button><span class="hero-best">${icon('star')}${gold}</span></div><div class="hero-score"><b id="sandbox-count">0</b><small>/ ${total}</small><span class="unit">LEVELS</span></div><div class="hero-bar"><i class="gold" style="width:${(gold / total * 100).toFixed(1)}%"></i><i style="width:${(cleared / total * 100).toFixed(1)}%;background:#ffd23f80"></i></div><div class="hero-actions"><button id="next-level" class="chunk yellow">${icon('play-icon')}${cleared === total ? 'ALL LEVELS CLEARED' : cleared ? 'NEXT UNCLEARED' : 'FIRST LEVEL'}</button></div>`;
+    hero.innerHTML = sandboxHero({gold, total, cleared});
     countUp($('#sandbox-count'), cleared, 0);
     $('#sandbox-help').onclick = sandboxInfo;
     $('#next-level').onclick = () => {feedback(); const next = firstUncleared(); if (next) playSandbox(next.id, next.level); else notice('Every level is cleared. Chase gold!');};
@@ -152,20 +75,18 @@ function renderHero() {
 }
 function renderGrid() {
   $('#game-grid').innerHTML = games.map((g, i) => {
-    let cls = '', badge = '', segs;
+    let cls = '', segs;
     if (settings.mode === 'run') {
       const r = runGame(g.id), done = r?.summary?.levels_completed ?? 0, won = isWon(g.id), active = Boolean(r?.history?.length) && !won;
       cls = won ? 'done' : active ? 'active' : '';
-      badge = '';
       segs = segments('', g.levels, k => k < done ? 'done' : k === done && active ? 'current' : '');
     } else {
       const golds = g.baseline.filter((_, k) => isGold(g.id, k)).length, cleared = Object.keys(sandbox[g.id] ?? {}).length;
       cls = golds === g.levels ? 'done' : cleared ? 'active' : '';
-      badge = '';
       segs = segments('', g.levels, k => rating(g.id, k) === 'diamond' ? 'diamond' : isGold(g.id, k) ? 'gold' : sandboxBest(g.id, k) != null ? 'done' : '');
     }
     const locked = settings.mode === 'run' && !isWon(g.id) && g.id !== nextRunGame(games, run);
-    return `<button ${locked ? 'disabled' : ''} class="game-card ${cls}${locked ? ' locked' : ''}" data-game="${g.id}" style="--i:${i}" aria-label="${g.id.toUpperCase()}, ${g.levels} levels">${badge}<img src="./assets/${g.id}.png" alt="" loading="lazy"><strong>${g.id.toUpperCase()}</strong>${segs}</button>`;
+    return gameCard(g, {locked, cls, segs, i});
   }).join('');
   $$('[data-game]').forEach(b => b.addEventListener('click', () => settings.mode === 'run' ? openRunGame(b.dataset.game) : levelPicker(b.dataset.game)));
 }
@@ -214,15 +135,12 @@ function firstUncleared() {for (const g of games) for (let level = 0; level < g.
 const rating = (id, level, attempt) => sandboxRating(games, sandbox, diamonds, id, level, attempt);
 function levelPicker(id) {
   const g = gameOf(id);
-  detailPage(id.toUpperCase(), `<div class="level-list" style="--level-rows:${Math.ceil(g.levels / 3)};--landscape-rows:${Math.ceil(g.levels / 5)}">${g.baseline.map((human, k) => {
-    const best = sandboxBest(id, k), cls = rating(id, k), hint = best != null && best > human;
-    return `<button class="level-tile ${cls}" data-level="${k}" aria-label="Level ${k + 1}, ${cls || 'Not Cleared'}${best != null ? `, best ${best} actions` : ''}"><span class="tile-preview"><img src="./assets/levels/${id}/${k + 1}.png" alt="" width="64" height="64"></span><span class="tile-caption"><strong>${String(k + 1).padStart(2, '0')}</strong>${best != null ? `<span class="tile-best" title="Best: ${best} actions">${icon('bolt')} ${best}</span>` : '<span class="tile-unplayed" aria-hidden="true">—</span>'}</span>${hint ? `<small class="tile-target">${human} actions for gold</small>` : ''}</button>`;
-  }).join('')}</div>`, home, 'picker-screen');
+  detailPage(id.toUpperCase(), levelGrid(g, sandbox[id] ?? {}, level => rating(id, level)), home, 'picker-screen');
   $$('[data-level]').forEach(b => b.onclick = () => {feedback(); playSandbox(id, Number(b.dataset.level));});
 }
 function sandboxInfo() {
   feedback();
-  detailPage('Sandbox', `<div class="about-copy"><p>Play any level. Your fewest actions are saved.</p><div class="info-row">${icon('check')}<span>Mint means cleared.</span></div><div class="info-row">${icon('star')}<span>Gold means you matched or beat the human count.</span></div>${allGold(games, sandbox) ? `<div class="info-row">${icon('diamond')}<span>Diamond means you matched or beat the public level record. Earlier bests count too.</span></div>` : ''}<p>After a clear above the gold target, we show how many actions to aim for.</p>${allGold(games, sandbox) ? `<p class="local-note">Records from <a href="https://arc3.games/" target="_blank" rel="noopener">ARC3.Games ↗</a> · ${diamonds.fetchedAt?.slice(0, 10) ?? ""}</p>` : ""}</div>`);
+  detailPage('Sandbox', `<div class="about-copy"><p>Play any level. Your fewest actions are saved.</p><div class="info-row">${icon('check')}<span>Mint means cleared.</span></div><div class="info-row">${icon('star')}<span>Gold means you matched or beat the human count.</span></div>${allGold(games, sandbox) ? `<div class="info-row">${icon('diamond')}<span>Diamond means you matched or beat the public level record. Earlier bests count too.</span></div>` : ''}<p>Finish a level to see your score. 100% matches the human action count; fewer actions can earn up to 115%. If you miss gold, your next attempt shows the action target.</p>${allGold(games, sandbox) ? `<p class="local-note">Records from <a href="https://arc3.games/" target="_blank" rel="noopener">ARC3.Games ↗</a> · ${diamonds.fetchedAt?.slice(0, 10) ?? ""}</p>` : ""}</div>`);
 }
 function playSandbox(id, level) {play({game: id, level, sandbox: true});}
 function levelCleared() {
@@ -237,58 +155,7 @@ function levelCleared() {
   $('#levels').onclick = () => {home(); levelPicker(session.game);};
 }
 
-// Native modal focus and keyboard containment keep the board inert behind overlays.
-let overlayDismiss = null, overlayClosing = false, oldLevelFrame = null;
-function gameOverlay(title, content, cls, onDismiss = null) {
-  closeGameOverlay(); pointer = null; overlayDismiss = onDismiss;
-  const dialog = $('#game-dialog'); dialog.className = cls;
-  $('#overlay-body').innerHTML = `<header class="overlay-header"><h2 id="overlay-title">${title}</h2><button class="overlay-close" aria-label="Close">${icon('close')}</button></header>${content}`;
-  $('.overlay-close').onclick = dismissGameOverlay;
-  dialog.showModal();
-}
-function closeGameOverlay() {
-  const dialog = $('#game-dialog');
-  overlayClosing = false; dialog.getAnimations().forEach(a => a.cancel()); overlayDismiss = null;
-  if (dialog.open) dialog.close();
-}
-function dismissGameOverlay() {
-  if (overlayClosing || !$('#game-dialog').open) return;
-  const dialog = $('#game-dialog'), done = () => {const cb = overlayDismiss; closeGameOverlay(); cb?.();};
-  overlayClosing = true;
-  if (reduced) done();
-  else dialog.animate([{opacity: 1, transform: 'translateY(0)'}, {opacity: 0, transform: 'translateY(8px)'}], {duration: 90, easing: 'ease-in'}).finished.then(done).catch(() => {});
-}
-$('#game-dialog').addEventListener('cancel', e => {e.preventDefault(); dismissGameOverlay();});
-let backdropPress = false;
-$('#game-dialog').addEventListener('pointerdown', e => {const r = e.currentTarget.getBoundingClientRect(); backdropPress = e.target === e.currentTarget && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom);});
-$('#game-dialog').addEventListener('click', e => {if (backdropPress && e.target === e.currentTarget) dismissGameOverlay(); backdropPress = false;});
-
-// ---- Full pages. Preserve DOM handlers and scroll when returning to a parent page.
-function closeDetails() {
-  if (screenName === 'detail') show(detailStack[0]?.screen ?? 'home', true);
-  detailStack = []; detailReturn = null;
-}
-function detailPage(title, content, onBack = null, cls = '') {
-  detailStack.push({screen: screenName, title: $('#detail-title').textContent, nodes: [...$('#detail-body').childNodes], scroll: $('#detail-body').scrollTop, onBack: detailReturn, cls: $('#detail').className, focus: document.activeElement});
-  detailReturn = onBack;
-  $('#detail').className = `screen detail-screen ${cls}`;
-  $('#detail-title').textContent = title;
-  $('#detail-body').innerHTML = content;
-  $('#detail-body').scrollTop = 0;
-  show('detail');
-  $('#detail-title').focus({preventScroll: true});
-}
-function goDetailBack() {
-  if (screenName !== 'detail') return;
-  const cb = detailReturn, prev = detailStack.pop(); detailReturn = prev?.onBack ?? null;
-  if (prev?.screen === 'detail') {
-    $('#detail-title').textContent = prev.title; $('#detail-body').replaceChildren(...prev.nodes);
-    $('#detail').className = prev.cls; $('#detail-body').scrollTop = prev.scroll;
-    if (!reduced) $('#detail-body').animate([{opacity: .72}, {opacity: 1}], {duration: 110});
-  } else show(prev?.screen ?? 'home', true);
-  prev?.focus?.focus({preventScroll: true});
-  cb?.();
-}
+let oldLevelFrame = null;
 $('#detail-back').onclick = () => {feedback(); goDetailBack();};
 
 // ---- engine worker
@@ -303,7 +170,7 @@ function startWorker() {
       metrics.latencies.push(performance.now() - req.at); if (metrics.latencies.length > 200) metrics.latencies.shift();
       if (req.session !== sessionId) return;
       const old = state; state = data.result;
-      if (req.kind === 'start') {loadingGame = false; $('#loading').hidden = true; playing = true; show('game');}
+      if (req.kind === 'start') {loadingGame = false; $('#loading').hidden = true; $('#app').inert = false; closeDetails(false); playing = true; show('game');}
       if (req.kind === 'action' && state.accepted !== false) {
         metrics.inputCount++;
         if (session.sandbox) session.attempt = req.action.id === 0 ? 0 : session.attempt + 1;
@@ -313,7 +180,7 @@ function startWorker() {
     }
     if (data.type === 'error') {
       metrics.errors.push(data.error); pending.delete(data.requestId); if (!data.requestId) bootError = data.error;
-      loadingGame = false; $('#loading').hidden = true;
+      loadingGame = false; $('#loading').hidden = true; $('#app').inert = false;
       detailPage('A little hiccup', `<div class="dialog-stack"><p class="dialog-note">Your saved progress is safe. Reload the arcade and try again.</p><button id="reload" class="chunk mint">Reload arcade</button><details class="about-copy"><summary>Details</summary><p class="error-detail"></p></details></div>`);
       $('#detail .error-detail').textContent = data.error; $('#reload').onclick = () => location.reload();
     }
@@ -323,9 +190,12 @@ function startWorker() {
 function request(payload, kind, action) {const id = ++requestId; pending.set(id, {at: performance.now(), kind, action, session: sessionId}); worker.postMessage({...payload, requestId: id});}
 function play(config) {
   if (loadingGame || !gameOf(config.game) || (!config.sandbox && config.game !== nextRunGame(games, run))) return;
-  closeGameOverlay(); feedback(); session = {...config, attempt: 0}; loadingGame = true; closeDetails();
+  closeGameOverlay(); cancelGesture(); feedback(); session = {...config, attempt: 0}; loadingGame = true;
+  $('#loading-title').textContent = `Opening ${config.game.toUpperCase()}…`;
+  $('#loading').hidden = false; $('#app').inert = true;
+  $('#cancel-loading').focus({preventScroll: true});
   if (bootError) {worker?.terminate(); startWorker();}
-  if (ready) beginSession(); else $('#loading').hidden = false;
+  if (ready) beginSession();
 }
 function beginSession() {
   if (!loadingGame) return;
@@ -339,14 +209,6 @@ function beginSession() {
 function persist() {if (!state || session.sandbox) return; run.games[session.game].summary = state.score; persistRun();}
 
 // ---- board
-const rgba = ARC.map(c => [...c.slice(1).match(/../g).map(x => parseInt(x, 16)), 255]);
-const ctx = $('#board').getContext('2d', {alpha: false}); ctx.imageSmoothingEnabled = false;
-function draw(frame) {
-  if (!frame) return;
-  const image = ctx.createImageData(64, 64);
-  for (let y = 0; y < 64; y++) for (let x = 0; x < 64; x++) image.data.set(rgba[frame[y][x]], (y * 64 + x) * 4);
-  ctx.putImageData(image, 0, 0);
-}
 function render(old, initial = false) {
   const g = gameOf(session.game);
   $('#playing-name').textContent = session.game.toUpperCase();
@@ -363,9 +225,7 @@ function render(old, initial = false) {
     const raw = atob(state.animation), total = raw.length / 4096; let frameIndex = 0;
     const paint = () => {
       if (token !== framesToken || !playing) return;
-      const im = ctx.createImageData(64, 64);
-      for (let i = 0; i < 4096; i++) im.data.set(rgba[raw.charCodeAt(frameIndex * 4096 + i)], i * 4);
-      ctx.putImageData(im, 0, 0); frameIndex++;
+      drawAnimationFrame(raw, frameIndex++);
       if (frameIndex < total) setTimeout(paint, 1000 / Math.max(30, state.fps));
     };
     paint();
@@ -408,18 +268,16 @@ function won() {
 }
 function downloadScore() {
   const data = {app: 'ARC Quest', mode: 'local practice — not an official leaderboard submission', engine: 'arcengine 0.9.3', scoring: 'arc-agi 0.9.9', currentRun: {score: runScore(), levels: runLevels(), startedAt: run.startedAt, games: games.map(g => ({game_id: g.version, source_sha256: g.sha256, current: runGame(g.id)?.summary ?? null, actions: runGame(g.id)?.history ?? []}))}, pastRuns, sandbox};
-  if (window.AndroidGame) {window.AndroidGame.exportScore(JSON.stringify(data, null, 2)); return;}
-  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'}));
-  const a = document.createElement('a'); a.href = url; a.download = 'arc-quest-scorecard.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  window.AndroidGame?.exportScore(JSON.stringify(data, null, 2));
 }
 function runScorecard(id) {
-  const s = runGame(id)?.summary, g = gameOf(id); if (!s) {scorecard(); return;}
-  detailPage(id.toUpperCase() + ' scorecard', `<div class="score-big">${s.score.toFixed(1)}<small>%</small></div><p class="score-label">${s.levels_completed} / ${g.levels} levels · ${s.actions} actions</p><table class="score-table"><thead><tr><th>Level</th><th>Actions</th><th>Human</th><th>Score</th></tr></thead><tbody>${s.level_baseline_actions.map((b, i) => `<tr><td>${i + 1}${i < s.levels_completed ? ' ✓' : ''}</td><td>${s.level_actions[i] || '—'}</td><td>${b}</td><td>${s.level_scores[i].toFixed(1)}%</td></tr>`).join('')}</tbody></table><p class="dialog-note">This game’s action-efficiency score: 100% matches the human pace. Unfinished levels score zero; later levels carry more weight.</p><button id="export" class="text-button">Export scorecard</button>`);
+  const summary = runGame(id)?.summary;
+  if (!summary) {scorecard(); return;}
+  detailPage(id.toUpperCase() + ' scorecard', gameScorecard(gameOf(id), summary));
   $('#export').onclick = downloadScore;
 }
 function scorecard() {
-  const best = bestRun(), attempted = games.filter(g => runGame(g.id)?.summary);
-  detailPage('Your scores', `<div class="score-big">${runScore().toFixed(1)}<small>%</small></div><p class="score-label">Benchmark score · ${runLevels()} / ${totalLevels()} levels${best ? ` · best run ${best.score.toFixed(1)}%` : ''}</p>${attempted.length ? `<div class="score-list">${attempted.map(g => `<div class="score-row"><strong>${g.id.toUpperCase()}</strong><small>${runGame(g.id).summary.levels_completed} / ${g.levels} levels</small><b>${gameScore(g.id).toFixed(1)}%</b></div>`).join('')}</div>` : '<p class="dialog-note">Start a run to fill this in.</p>'}${pastRuns.length ? `<p class="score-label" style="margin-top:14px">Past runs</p><div class="score-list">${[...pastRuns].reverse().slice(0, 8).map(r => `<div class="score-row"><strong>${new Date(r.endedAt).toLocaleDateString()}</strong><small>${r.levels} levels · ${r.actions} actions</small><b>${r.score.toFixed(1)}%</b></div>`).join('')}</div>` : ''}<p class="dialog-note">Sandbox: ${sandboxCleared()} / ${totalLevels()} levels cleared, ${sandboxGold()} gold.</p><p class="dialog-note">Action-efficiency score, averaged across all 25 games. Unplayed games score zero. This is local practice, not a leaderboard rank.</p><button id="export" class="text-button">Export scorecard</button>`);
+  detailPage('Your scores', scoreOverview({games, pastRuns, best: bestRun(), runGame, runScore, runLevels, totalLevels, gameScore, sandboxCleared, sandboxGold}));
   $('#export').onclick = downloadScore;
 }
 function about() {
@@ -434,41 +292,13 @@ $('#live-score').onclick = () => {feedback(); runScorecard(session.game);};
 $('#about').onclick = () => {feedback(); about();};
 $('#back').onclick = () => {feedback(); const id = session?.game, practice = session?.sandbox; home(); if (practice) levelPicker(id);};
 $('#game-over').addEventListener('click', () => act({id: 0}));
-$$('.theme-toggle').forEach(b => b.onclick = () => {settings.dark = !settings.dark; updateSettings(); feedback();});
 $$('.sound-toggle').forEach(b => b.onclick = () => {settings.sound = !settings.sound; updateSettings(); feedback();});
-$$('.haptic-toggle').forEach(b => b.onclick = () => {settings.haptic = !settings.haptic; updateSettings(); feedback(); if (settings.haptic && !navigator.vibrate && !window.AndroidGame) notice('Vibration isn’t supported by this browser.');});
-$('#cancel-loading').onclick = () => {loadingGame = false; $('#loading').hidden = true; sessionId = null;};
-// Board gestures. A short press is a click (action 6) at the pressed cell; a longer drag is a swipe
-// in the games that move. Both are decided on release, so a swipe never fires a click first.
-const SWIPE = 18;
-let pointer = null;
-const board = $('#board');
-board.addEventListener('pointerdown', e => {
-  if (!playing || screenName === 'detail' || $('#game-dialog').open || !e.isPrimary) return;
-  e.preventDefault(); board.setPointerCapture(e.pointerId);
-  pointer = {x: e.clientX, y: e.clientY, id: e.pointerId};
-});
-board.addEventListener('pointerup', e => {
-  if (!pointer || pointer.id !== e.pointerId) return;
-  const start = pointer; pointer = null;
-  if (!state) return;
-  const dx = e.clientX - start.x, dy = e.clientY - start.y, a = state.available;
-  if (Math.hypot(dx, dy) >= SWIPE) {
-    const dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 4 : 3) : (dy > 0 ? 2 : 1);
-    if (a.includes(dir)) act({id: dir});
-    return;
-  }
-  if (!a.includes(6)) return;
-  const r = board.getBoundingClientRect();
-  act({id: 6, x: Math.max(0, Math.min(63, Math.floor((start.x - r.left) / r.width * 64))), y: Math.max(0, Math.min(63, Math.floor((start.y - r.top) / r.height * 64)))});
-});
-board.addEventListener('pointercancel', () => pointer = null);
-board.addEventListener('contextmenu', e => e.preventDefault());
-
+$$('.haptic-toggle').forEach(b => b.onclick = () => {settings.haptic = !settings.haptic; updateSettings(); feedback();});
+$('#cancel-loading').onclick = () => {loadingGame = false; $('#loading').hidden = true; $('#app').inert = false; sessionId = null; if (screenName === 'game') {const id = session.game, practice = session.sandbox; home(); if (practice) levelPicker(id);} else $('#detail-back').focus({preventScroll: true});};
 window.arcBack = () => {
   if ($('#game-dialog').open) {dismissGameOverlay(); return true;}
-  if (screenName === 'detail') {goDetailBack(); return true;}
   if (!$('#loading').hidden) {$('#cancel-loading').click(); return true;}
+  if (screenName === 'detail') {goDetailBack(); return true;}
   if (!$('#game').hidden) {$('#back').click(); return true;}
   if (!$('#onboarding').hidden) {if (pageIndex > 0) onboarding(pageIndex - 1); else if (settings.onboarded) home(); else return false; return true;}
   return false;
@@ -478,20 +308,21 @@ window.addEventListener('keydown', e => {
   if (!$('#launch').hidden && (e.key === 'Enter' || e.key === ' ')) {e.preventDefault(); $('#launch-start').click(); return;}
   if (e.key === 'Escape') {e.preventDefault(); window.arcBack(); return;}
   if (!playing) return;
-  if (screenName === 'detail' || $('#game-dialog').open) return;
+  if (loadingGame || screenName === 'detail' || $('#game-dialog').open) return;
   const map = {ArrowUp: 1, w: 1, ArrowDown: 2, s: 2, ArrowLeft: 3, a: 3, ArrowRight: 4, d: 4, ' ': 5, z: 7, r: 0};
   if (e.key in map) {e.preventDefault(); act({id: map[e.key]});}
 });
 
-// Drop stale gestures/animation frames when Android or the browser changes focus.
-function suspendView() {for (const animation of document.getAnimations()) if (Number.isFinite(animation.effect?.getComputedTiming().endTime)) animation.finish(); pointer = null; framesToken++; $('#confetti').replaceChildren(); if (state) draw(state.frames.at(-1)); audioContext?.suspend();}
+// Drop stale gestures/animation frames when Android changes focus.
+function suspendView() {for (const animation of document.getAnimations()) if (Number.isFinite(animation.effect?.getComputedTiming().endTime)) animation.finish(); cancelGesture(); framesToken++; $('#confetti').replaceChildren(); if (state) draw(state.frames.at(-1)); suspendSound();}
 window.arcSuspend = suspendView;
 window.addEventListener('blur', suspendView);
 document.addEventListener('visibilitychange', () => {if (document.hidden) suspendView(); else if (state) {framesToken++; draw(state.frames.at(-1));}});
+bindIntro({settings, home, updateSettings});
+bindBoard({getState: () => state, canInput: () => playing && !loadingGame && screenName === 'game' && !$('#game-dialog').open, act});
 updateSettings();
 try {
   [games, diamonds] = await Promise.all(['./games.json', './diamonds.json'].map(async url => (await fetch(url)).json()));
   games.sort((a, b) => {const first = ['ls20', 'ft09', 'vc33']; const ai = first.indexOf(a.id), bi = first.indexOf(b.id); return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi) || a.id.localeCompare(b.id);});
   startWorker(); launch();
 } catch (e) {notice('Could not load games. Please reload.'); metrics.errors.push(String(e));}
-if ('serviceWorker' in navigator && !navigator.userAgent.includes('ArcQuestAndroid')) navigator.serviceWorker.register('./sw.js').catch(() => {});

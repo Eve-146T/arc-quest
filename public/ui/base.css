@@ -1,0 +1,59 @@
+@font-face{font-family:Fredoka;src:url('../assets/Fredoka.ttf') format('truetype');font-weight:300 700;font-display:swap}
+:root{
+  font-family:Fredoka,sans-serif;color:#2b1f5e;
+  --ink:#2b1f5e;--ink-soft:#5b4f8f;--muted:#8f87b8;
+  --page-top:#ffe4f3;--page-bottom:#d9f2ff;--card:#fff;--card-alt:#f4f0ff;
+  --pink:#ff4fa3;--berry:#ff3b6b;--yellow:#ffd23f;--gold:#ffb800;--mint:#2ee6a6;--sky:#3ec6ff;--grape:#9b5cff;--lavender:#c9b3ff;
+  --pop:cubic-bezier(.2,1.4,.4,1);--neutral-lip:#cfc6e0;--outline:#2b1f5e;--hero-run:#e0faf0;--hero-sandbox:#fff3ce;
+  font-synthesis:none;-webkit-tap-highlight-color:transparent
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none}
+body{user-select:none;background:var(--page-top);color:var(--ink)}
+button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulation;-webkit-touch-callout:none;background:none;padding:0}
+button:disabled{cursor:wait;opacity:.7}
+button:focus-visible,a:focus-visible{outline:4px solid var(--ink);outline-offset:4px}
+button:focus:not(:focus-visible){outline:0}
+button svg,button small,button span,button img,button i,button b{pointer-events:none}
+a{color:#5630a0}
+h1,h2,h3,p{margin:0}
+[hidden]{display:none!important}
+.icon{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.sky-ink{color:#24bee9}.berry-ink{color:var(--berry)}
+.svg-library{position:absolute;width:0;height:0;overflow:hidden}
+
+/* Outlined stage lettering: white ink-stroked text, like the HUD titles. */
+.stage-text{color:#fff;-webkit-text-stroke:6px var(--outline);paint-order:stroke fill;filter:drop-shadow(0 3px 0 var(--outline));font-weight:700;letter-spacing:2px;line-height:1.05}
+.stage-text .accent{color:var(--yellow)}
+
+/* Candy slabs: a face resting on a darker lip; pressing pushes it onto the lip. */
+.chunk,.chip{--lip:#1f9c71;background:var(--mint);box-shadow:0 6px 0 var(--lip);border-radius:20px;position:relative;display:inline-flex;align-items:center;justify-content:center;gap:10px;font-weight:650;transition:transform .08s,box-shadow .08s}
+.chunk:before,.chip:before{content:'';position:absolute;top:6px;left:14%;right:14%;height:34%;border-radius:12px;background:#ffffff3d;pointer-events:none}
+.chunk{min-height:58px;padding:0 22px;font-size:21px;letter-spacing:.5px}
+.chip{width:52px;height:52px;border-radius:17px}
+.chip .icon{width:26px;height:26px}
+.mint{background:var(--mint);--lip:#1f9c71}
+.sky{background:var(--sky);--lip:#2a87ad}
+.grape{background:var(--grape);--lip:#6a3ead;color:#fff}
+.yellow{background:var(--yellow);--lip:#ad8f2b}
+.white{background:var(--card);--lip:var(--neutral-lip)}
+.lavender{background:var(--lavender);--lip:#8979ad}
+.berry{background:var(--berry);--lip:#b0284a;color:#fff}
+.chunk:active,.chip:active,.game-card:active,.mode-card:active{transform:translateY(5px);box-shadow:0 1px 0 var(--lip)}
+.text-button{padding:13px;font-size:17px;font-weight:550;text-decoration:underline;text-underline-offset:3px}
+
+/* White pills carry numbers (score, actions, target). */
+.pill{display:inline-flex;background:var(--card);align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 16px;border-radius:30px;box-shadow:0 4px 0 #2b1f5e26;font-size:20px;font-weight:650;white-space:nowrap}
+.pill small{font-size:15px;font-weight:500;color:var(--ink-soft)}
+.pill .icon{width:24px;height:24px}
+button.pill:active{transform:translateY(3px);box-shadow:0 1px 0 #2b1f5e26}
+
+#app{position:relative;height:100%;height:100dvh;max-width:520px;margin:auto}
+.screen{height:100%;display:flex;flex-direction:column;padding:max(16px,env(safe-area-inset-top)) 18px max(16px,env(safe-area-inset-bottom));gap:12px}
+.top-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:56px;flex-shrink:0}
+.logo{font-size:36px;transform:rotate(-2deg);padding-left:4px}
+.logo span{display:inline-block}
+.logo.big{font-size:clamp(56px,15vw,84px);text-align:center;padding:0;transform:rotate(-3deg)}
+.logo.big span{display:block}
+.logo.big span+span{margin-top:-4px}
+

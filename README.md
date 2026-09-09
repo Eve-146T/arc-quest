@@ -5,16 +5,16 @@ src="public/assets/icon-192.png" alt="ARC Quest">
 
 25 puzzle games. 183 levels. Figure out the rules as you go.
 
-Play offline on Android or in your browser.
+An offline Android app.
 
-[Android APK](https://apps.muxu.click/d/qwzp7wzw) · [Web preview](https://apps.muxu.click/d/9qgcg8e8)
+[Android APK](https://apps.muxu.click/d/w2gt78b9)
 
 ## Screenshots
 
 <p align="center">
   <img src="docs/screenshots/sandbox.png" width="22%" alt="Choose a puzzle in sandbox">
   <img src="docs/screenshots/levels.png" width="22%" alt="Visual level grid with gold backgrounds">
-  <img src="docs/screenshots/game.png" width="22%" alt="FT09 puzzle in dark mode">
+  <img src="docs/screenshots/game.png" width="22%" alt="FT09 puzzle">
   <img src="docs/screenshots/complete.png" width="22%" alt="A completed level over the board">
 </p>
 
@@ -34,7 +34,7 @@ npm ci
 npm run dev
 ```
 
-Use `npm run build` for the web app or `scripts/build-android.sh` for the APK.
+Build an installable review APK with `ARC_REVIEW=1 scripts/build-android.sh`. GitHub Actions checks every change and uploads a debug APK; `v*` tags build signed releases once the Eve signing secrets are configured.
 
 [Development](docs/DEVELOPMENT.md) · [Verification](VERIFICATION.md)
 

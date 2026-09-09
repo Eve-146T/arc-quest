@@ -1,4 +1,8 @@
 // Keep benchmark order, completed records and sandbox awards independent of rendering.
+// Per-level action efficiency uses the official equation, before game-level weighting.
+export function levelScore(baseline, actions) {
+  return Number.isInteger(actions) && actions > 0 ? Math.min(115, 100 * (baseline / actions) ** 2) : 0;
+}
 export function nextRunGame(games, run) {
   return games.find(g => run.games[g.id]?.summary?.state !== 'WIN')?.id ?? null;
 }

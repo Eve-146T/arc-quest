@@ -10,11 +10,11 @@ try{
  await page.reload();await page.click('#launch-start');await mkdir('docs/screenshots',{recursive:true});
  const shot=async name=>{await page.screenshot({path:`docs/screenshots/${name}.png`});};
  await shot('sandbox');await page.click('[data-game="ft09"]');await expect(page.locator('[data-level] img').first()).toBeVisible();await shot('levels');
- await page.click('#detail-back');await page.click('.theme-toggle');await page.click('[data-game="ft09"]');await page.click('[data-level="3"]');await expect(page.locator('#game')).toBeVisible({timeout:90000});await shot('game');
- await page.click('#back');await page.click('#detail-back');await page.click('.theme-toggle');await page.click('[data-game="ft09"]');await page.click('[data-level="0"]');await expect(page.locator('#game')).toBeVisible();
+ await page.click('#detail-back');await page.click('[data-game="ft09"]');await page.click('[data-level="3"]');await expect(page.locator('#game')).toBeVisible({timeout:90000});await shot('game');
+ await page.click('#back');await page.click('#detail-back');await page.click('[data-game="ft09"]');await page.click('[data-level="0"]');await expect(page.locator('#game')).toBeVisible();
  const sequence=JSON.parse(await readFile('test-results/leaderboard-sequences.json')).ft09[0];
  for(let i=0;i<sequence.length;i++){const [x,y]=sequence[i],r=await page.locator('#board').boundingBox();await page.touchscreen.tap(r.x+(x+.5)/64*r.width,r.y+(y+.5)/64*r.height);await expect(page.locator('#actions')).toHaveText(String(i+1));}
  await expect(page.locator('#game-dialog')).toBeVisible();await shot('complete');
  for(const name of ['benchmark','diamond','gold','info','score'])await rm(`docs/screenshots/${name}.png`,{force:true});
- console.log('Saved four screenshots: sandbox, level grid, dark gameplay, completed level.');
+ console.log('Saved four screenshots: sandbox, level grid, gameplay, completed level.');
 }finally{await browser.close();}

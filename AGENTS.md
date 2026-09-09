@@ -6,7 +6,7 @@
 - `vendor/environments/` holds the original ARC-AGI-3 sources. `public/games.json` pins versions, baselines, and checksums.
 - `android/` contains the Java WebView shell, manifest, and resources.
 - `scripts/` handles serving, bundling, asset preparation, and APK builds.
-- `tests/` contains scoring, parity, sandbox level-entry, browser, and Android checks. Generated evidence belongs in `test-results/`; build outputs belong in `dist/` and `android/build/`.
+- `tests/` contains scoring, parity, sandbox level-entry, WebView UI, and Android checks. Generated evidence belongs in `test-results/`; build outputs belong in `dist/` and `android/build/`.
 
 ## Build, Test, and Development Commands
 
@@ -21,9 +21,9 @@ export MPLCONFIGDIR="$PWD/.cache/matplotlib"
 
 - `npm ci` and `uv sync --group test`: install locked dependencies.
 - `npm run dev`: serve the game at `http://localhost:4173`.
-- `npm run build`: generate the offline cache manifest and static `dist/` bundle.
+- `npm run build`: bundle Android WebView assets in `dist/` (not a web release).
 - `uv run scripts/prepare.py`: rebuild bundled engine sources, runtime dependencies, and previews; downloads may require networking.
-- `scripts/build-android.sh`: build and sign `android/build/arc-quest.apk`. Requires Java, Android platform/build-tools 35, and `zip`; configure `ANDROID_SDK_ROOT`.
+- `ARC_REVIEW=1 scripts/build-android.sh`: build and sign a review `android/build/arc-quest.apk`. Requires Java, Android platform/build-tools 35, and `zip`; configure `ANDROID_SDK_ROOT`.
 
 ## Coding Style & Naming Conventions
 
@@ -31,7 +31,7 @@ Use four-space indentation for Python/Java and two spaces for expanded JavaScrip
 
 ## Testing Guidelines
 
-Node’s test runner executes `tests/*.test.mjs`; Playwright powers browser integration scripts. Generate fixtures before testing (`tests/android.mjs` needs a debug build, `ARC_DEBUG=1 scripts/build-android.sh`, installed on a USB-connected phone):
+Node’s test runner executes `tests/*.test.mjs`; Playwright exercises the Android WebView UI in a local harness. Generate fixtures before testing (`tests/android.mjs` needs a debug build, `ARC_DEBUG=1 scripts/build-android.sh`, installed on a USB-connected phone):
 
 ```sh
 uv run tests/native_fixtures.py
@@ -39,15 +39,15 @@ uv run --group test tests/solve_ft09.py
 npm test
 node tests/parity.mjs
 node tests/levels.mjs
-npm run test:browser
+npm run test:ui
 node tests/android.mjs
 ```
 
-Keep the development server running for browser tests; configure their Chromium executable paths. Adapter changes must preserve reference pixels, actions, and scores. UI changes should cover touch, narrow/landscape layouts, persistence, and offline reload. Keep solvers outside shipped assets. Record evidence and limitations in `VERIFICATION.md`.
+Keep the development server running for WebView UI tests; configure their Chromium executable paths. Adapter changes must preserve reference pixels, actions, and scores. UI changes should cover touch, narrow/landscape layouts, persistence, and offline reload. Keep solvers outside shipped assets. Record evidence and limitations in `VERIFICATION.md`.
 
 ## Commit & Pull Request Guidelines
 
-Git history is unavailable in this checkout, so no existing commit convention is verified. Use concise imperative subjects, such as `Fix retry action counting`. PRs should explain behavior changes, link relevant issues, and report checks. Include screenshots for UI changes. Publish review artifacts with `drop web dist` or `drop apk android/build/arc-quest.apk` and include the URL.
+Use concise imperative subjects, such as `Fix retry action counting`. PRs should explain behavior changes, link relevant issues, and report checks. Include screenshots for UI changes. Publish review artifacts with `drop apk android/build/arc-quest.apk` and include the URL.
 
 ## Engine Integrity
 
