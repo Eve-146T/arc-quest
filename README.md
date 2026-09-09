@@ -7,22 +7,15 @@ src="public/assets/icon-192.png" alt="ARC Quest">
 
 Play offline on Android or in your browser.
 
-[Android APK](https://apps.muxu.click/d/a7wj7334) · [Web preview](https://apps.muxu.click/d/q92ci9g2)
+[Android APK](https://apps.muxu.click/d/qwzp7wzw) · [Web preview](https://apps.muxu.click/d/9qgcg8e8)
 
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshots/sandbox.png" width="22%" alt="Sandbox game selection">
-  <img src="docs/screenshots/levels.png" width="22%" alt="Pick a level and see your best">
-  <img src="docs/screenshots/game.png" width="22%" alt="Play an ARC puzzle with touch controls">
-  <img src="docs/screenshots/gold.png" width="22%" alt="Gold awarded for beating the human action count">
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/benchmark.png" width="22%" alt="Continue the next benchmark game">
-  <img src="docs/screenshots/score.png" width="22%" alt="Action-efficiency scorecard">
-  <img src="docs/screenshots/info.png" width="22%" alt="A quick explanation of the two modes">
-  <img src="docs/screenshots/diamond.png" width="22%" alt="Secret diamond ratings after earning every gold">
+  <img src="docs/screenshots/sandbox.png" width="22%" alt="Choose a puzzle in sandbox">
+  <img src="docs/screenshots/levels.png" width="22%" alt="Visual level grid with gold backgrounds">
+  <img src="docs/screenshots/game.png" width="22%" alt="FT09 puzzle in dark mode">
+  <img src="docs/screenshots/complete.png" width="22%" alt="A completed level over the board">
 </p>
 
 ## Gameplay

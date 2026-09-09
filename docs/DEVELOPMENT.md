@@ -33,6 +33,7 @@ npm test
 node tests/parity.mjs
 node tests/levels.mjs
 npm run test:browser
+node tests/layouts.mjs
 ```
 
 Set `CHROMIUM_PATH` if Chromium is installed somewhere other than the default in `tests/browser.mjs`. `ARC_DEBUG=1 scripts/build-android.sh` builds an inspectable APK for the connected-device checks in `tests/android.mjs`. Those checks back up and restore local storage.
@@ -62,4 +63,4 @@ See [verification](../VERIFICATION.md) for evidence and limitations.
 
 ## Screenshots and level previews
 
-`uv run scripts/level-previews.py` renders all 183 initial boards without changing engine code. `TMPDIR="$PWD/.scratch" node scripts/screenshots.mjs` captures the README examples from an isolated profile; run browser tests first to generate the real FT09 gold-result image.
+`uv run scripts/level-previews.py` renders all 183 initial boards without changing engine code. `TMPDIR="$PWD/.scratch" node scripts/screenshots.mjs` captures four README examples from an isolated profile. It uses the downloaded FT09 record sequence for a real completion overlay; run the diamond updater first if that ignored replay evidence is missing.

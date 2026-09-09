@@ -9,11 +9,11 @@ page.on('pageerror',e=>errors.push(e.message));
 const solution=JSON.parse(await readFile('test-results/ft09-solution.json','utf8'));
 const games=JSON.parse(await readFile('public/games.json','utf8'));
 const diamonds=JSON.parse(await readFile('public/diamonds.json','utf8'));
-const waitMotion=()=>page.waitForTimeout(650);
+const waitMotion=()=>page.waitForTimeout(200);
 async function shot(name){await waitMotion();await page.screenshot({path:`test-results/${name}.png`});}
 async function count(n){await expect(page.locator('#actions')).toHaveText(String(n));}
 async function gameOpen(id){await expect(page.locator('#game')).toBeVisible({timeout:90000});await expect(page.locator('#playing-name')).toHaveText(id.toUpperCase());await waitMotion();}
-async function home(){for(let i=0;i<5&&!(await page.locator('#home').isVisible());i++){await page.evaluate(()=>window.arcBack());}await expect(page.locator('#home')).toBeVisible();}
+async function home(){if(await page.locator('#game-dialog').isVisible()){await page.evaluate(()=>window.arcBack());await expect(page.locator('#game-dialog')).toBeHidden();}for(let i=0;i<5&&!(await page.locator('#home').isVisible());i++){await page.evaluate(()=>window.arcBack());}await expect(page.locator('#home')).toBeVisible();}
 async function sandbox(id,level=0){await home();await page.click('button[data-mode="sandbox"]');await page.click(`[data-game="${id}"]`);await page.click(`[data-level="${level}"]`);await gameOpen(id);}
 async function reload(){await page.reload();await page.click('#launch-start');await expect(page.locator('#home')).toBeVisible();}
 async function swipe(dx,dy){const r=await page.locator('#board').boundingBox(),cdp=await context.newCDPSession(page),x=r.x+r.width/2,y=r.y+r.height/2;await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+dx,y:y+dy}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();}
@@ -26,20 +26,21 @@ try{
  // Icon states are visually distinct and persist.
  await expect(page.locator('.sound-toggle')).toHaveAttribute('aria-pressed','false');await page.click('.sound-toggle');await expect(page.locator('.sound-toggle')).toHaveAttribute('aria-pressed','true');
  await page.click('.haptic-toggle');await expect(page.locator('.haptic-toggle use')).toHaveAttribute('href','#vibrate-off');await reload();await expect(page.locator('.sound-toggle')).toHaveAttribute('aria-pressed','true');await expect(page.locator('.haptic-toggle')).toHaveAttribute('aria-pressed','false');await page.click('.sound-toggle');
+ await page.click('.theme-toggle');await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await reload();await expect(page.locator('html')).toHaveAttribute('data-theme','dark');await page.click('.theme-toggle');await expect(page.locator('html')).toHaveAttribute('data-theme','light');
  await page.click('#sandbox-help');await expect(page.locator('#detail-title')).toHaveText('Sandbox');assert.ok(!(await page.locator('#detail-body').textContent()).includes('Diamond'));await page.click('#detail-back');
  console.log('CHECKPOINT', new Date().toISOString());
  // Benchmarks permit only the next game; the percentage explicitly counts cleared levels.
  await page.click('button[data-mode="run"]');await expect(page.locator('.game-card:disabled')).toHaveCount(24);await expect(page.locator('.game-card .badge')).toHaveCount(0);await expect(page.locator('[data-game="ls20"]')).toBeEnabled();await expect(page.locator('#hero')).toContainText('% complete');
  await page.evaluate(()=>document.querySelector('[data-game="ft09"]').click());await expect(page.locator('#home')).toBeVisible();await page.click('#continue-run');await gameOpen('ls20');
  for(let i=1;i<=12;i++){await page.locator('[data-action="4"]').tap();await count(i);}
- await page.locator('[data-action="0"]').tap();await expect(page.locator('#detail-title')).toHaveText('Restart this level?');await count(12);await page.click('#keep-playing');await count(12);
+ await page.locator('[data-action="0"]').tap();await expect(page.locator('#overlay-title')).toHaveText('Restart level?');await expect(page.locator('#game')).toBeVisible();await count(12);await page.click('#keep-playing');await count(12);
  await page.keyboard.press('r');await page.click('#do-retry');await count(13);await swipe(-70,0);await count(14);
  await page.click('#mode-badge');await expect(page.locator('#detail-title')).toHaveText('Your scores');await page.click('#detail-back');await page.click('#live-score');await expect(page.locator('#detail-body')).toContainText('action-efficiency');await shot('scorecard');await page.click('#detail-back');await shot('game');await home();
  await reload();await page.click('#continue-run');await gameOpen('ls20');await count(14);await home();await expect(page.locator('#record')).toBeHidden();
  await page.click('#reset-run');await shot('reset-run');assert.notEqual(await page.locator('#keep-run').evaluate(e=>getComputedStyle(e).color),await page.locator('#keep-run').evaluate(e=>getComputedStyle(e).backgroundColor));await page.click('#keep-run');await expect(page.locator('#continue-run')).toContainText('CONTINUE');await page.click('#reset-run');await page.click('#do-reset');await expect(page.locator('#continue-run')).toContainText('START');await expect(page.locator('#record')).toBeHidden();
  console.log('CHECKPOINT', new Date().toISOString());
  // Mixed touch controls remain functional in sandbox; board swipes and taps stay distinct.
- await sandbox('dc22');await swipe(-70,0);await count(1);await swipe(0,70);await count(2);await clickCell({x:10,y:20});await count(3);await page.click('#mode-badge');await expect(page.locator('#detail-title')).toHaveText('Sandbox');await page.click('#detail-back');await count(3);
+ await sandbox('dc22');await swipe(-70,0);await count(1);await swipe(0,70);await count(2);await clickCell({x:10,y:20});await count(3);await expect(page.locator('#mode-badge')).toBeHidden();await count(3);
  console.log('CHECKPOINT', new Date().toISOString());
  // App-switch interruption cancels a gesture without adding an action.
  {const r=await page.locator('#board').boundingBox();await page.mouse.move(r.x+r.width/2,r.y+r.height/2);await page.mouse.down();await page.evaluate(()=>window.dispatchEvent(new Event('blur')));await page.mouse.up();}await count(3);
@@ -47,11 +48,11 @@ try{
  console.log('CHECKPOINT', new Date().toISOString());
  // Sandbox gold/result pages, explicit retry, next level and level-picker back navigation.
  await sandbox('ls20',2);await expect(page.locator('#target-value')).toHaveText('73');await page.locator('[data-action="4"]').tap();await count(1);await page.locator('[data-action="0"]').tap();await page.click('#do-retry');await count(0);
- await sandbox('ft09');for(let i=0;i<solution.length;i++){if(await page.locator('#detail').isVisible())break;await clickCell(solution[i]);await count(i+1);}
- await expect(page.locator('#detail-title')).toHaveText('Gold!');await shot('sandbox-cleared');await expect(page.locator('#game')).toBeHidden();await page.click('#next');await gameOpen('ft09');await page.click('#back');await expect(page.locator('#detail-title')).toHaveText('FT09');await expect(page.locator('[data-level="0"]')).toHaveClass(/gold/);await shot('level-picker');await home();await expect(page.locator('[data-game="ft09"] .badge')).toHaveCount(0);await expect(page.locator('#sandbox-count')).toHaveText('1');
+ await sandbox('ft09');for(let i=0;i<solution.length;i++){if(await page.locator('#game-dialog').isVisible())break;await clickCell(solution[i]);await count(i+1);}
+ await expect(page.locator('#overlay-title')).toHaveText('Level complete');await expect(page.locator('#game-dialog')).toHaveClass(/gold/);await expect(page.locator('#game-dialog use[href="#star"]')).toHaveCount(0);await shot('sandbox-cleared');await expect(page.locator('#game')).toBeVisible();await page.click('#next');await gameOpen('ft09');await page.click('#back');await expect(page.locator('#detail-title')).toHaveText('FT09');await expect(page.locator('[data-level="0"]')).toHaveClass(/gold/);await shot('level-picker');await home();await expect(page.locator('[data-game="ft09"] .badge')).toHaveCount(0);await expect(page.locator('#sandbox-count')).toHaveText('1');
  console.log('CHECKPOINT', new Date().toISOString());
  await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('arc-sandbox-v1'));s.ls20={0:23,1:123};localStorage.setItem('arc-sandbox-v1',JSON.stringify(s));});await reload();await page.click('[data-game="ls20"]');
- await expect(page.locator('[data-level="0"]')).toContainText('22 actions for gold');await expect(page.locator('[data-level="1"]')).not.toContainText('actions for gold');await expect(page.locator('[data-level="2"]')).toContainText('Not Cleared');await expect(page.locator('[data-level="2"]')).not.toContainText('actions for gold');
+ await expect(page.locator('[data-level="0"]')).toContainText('22 actions for gold');await expect(page.locator('[data-level="1"]')).not.toContainText('actions for gold');await expect(page.locator('[data-level="1"]')).not.toContainText('Gold');await expect(page.locator('[data-level] use[href="#star"]')).toHaveCount(0);await expect(page.locator('[data-level="2"]')).toHaveAttribute('aria-label',/Not Cleared/);await expect(page.locator('[data-level="2"]')).not.toContainText('actions for gold');
  assert.ok(await page.locator('[data-level] img').evaluateAll(images=>images.every(i=>i.complete&&i.naturalWidth===64)));await home();
  // Fixture: LS20 is complete so FT09 is the next benchmark game. FT09 itself is played for real.
  await page.evaluate(()=>{localStorage.setItem('arc-run-v2',JSON.stringify({startedAt:Date.now(),lastGame:'ls20',games:{ls20:{history:[],summary:{state:'WIN',score:100,levels_completed:7,actions:0}}}}));localStorage.setItem('arc-settings',JSON.stringify({onboarded:true,mode:'run'}));});await reload();await expect(page.locator('[data-game="ft09"]')).toBeEnabled();await expect(page.locator('[data-game="vc33"]')).toBeDisabled();await page.click('#continue-run');await gameOpen('ft09');

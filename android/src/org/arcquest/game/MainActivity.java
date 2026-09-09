@@ -17,7 +17,7 @@ public final class MainActivity extends Activity {
     private static final String HOST="appassets.androidplatform.net";
     @Override public void onCreate(Bundle state){
         super.onCreate(state);
-        web=new WebView(this);web.setBackgroundColor(0xffffe4f3);setContentView(web);
+        web=new WebView(this);web.setBackgroundColor(getPreferences(MODE_PRIVATE).getBoolean("dark",false)?0xff191827:0xffffe4f3);setContentView(web);
         WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);
         s.setAllowFileAccess(false);s.setAllowContentAccess(false);s.setMediaPlaybackRequiresUserGesture(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);s.setSupportZoom(false);
@@ -50,6 +50,7 @@ public final class MainActivity extends Activity {
         catch(IOException e){return new WebResourceResponse("text/plain","UTF-8",404,"Not found",new HashMap<>(),new ByteArrayInputStream(new byte[0]));}
     }
     public final class NativeActions{
+        @JavascriptInterface public void setDarkMode(boolean dark){runOnUiThread(()->{getPreferences(MODE_PRIVATE).edit().putBoolean("dark",dark).apply();web.setBackgroundColor(dark?0xff191827:0xffffe4f3);});}
         @JavascriptInterface public void haptic(boolean win){runOnUiThread(()->web.performHapticFeedback(win?HapticFeedbackConstants.LONG_PRESS:HapticFeedbackConstants.KEYBOARD_TAP));}
         @JavascriptInterface public void exportScore(String json){
             if(json==null||json.length()>5000000)return;

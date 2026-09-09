@@ -39,12 +39,13 @@ try{
  await evaluate("localStorage.setItem('arc-settings',JSON.stringify({onboarded:true,mode:'sandbox',sound:false,haptic:true}))");
  ws.close();({ws,send}=await launchApp());
  await wait("!document.querySelector('#launch').hidden");await tap('#launch-start');await wait("!document.querySelector('#home').hidden");await sleep(600);
+ await tap('.theme-toggle');assert.equal(await evaluate("document.documentElement.dataset.theme"),'dark');report.checks.push('dark theme toggle');
  await tap('#sandbox-help');await wait("document.querySelector('#detail-title').textContent==='Sandbox'");adb('shell','input','keyevent','KEYCODE_BACK');await wait("!document.querySelector('#home').hidden");
  await scrollTap('[data-game="ls20"]');await wait("!document.querySelector('#detail').hidden");await tap('[data-level="2"]');await wait("!document.querySelector('#game').hidden",120000);await sleep(400);
  assert.equal(await evaluate("document.querySelector('#target-value').textContent"),'73');await tap('[data-action="4"]');await wait("document.querySelector('#actions').textContent==='1'");
- await tap('[data-action="0"]');await wait("document.querySelector('#detail-title').textContent==='Restart this level?'");await tap('#keep-playing');await wait("!document.querySelector('#game').hidden");assert.equal(await actions(),1);
- await tap('[data-action="0"]');await wait("!document.querySelector('#detail').hidden");await tap('#do-retry');await wait("document.querySelector('#actions').textContent==='0'");report.checks.push('sandbox level entry and confirmed/cancelled trash actions');
- await tap('#mode-badge');await wait("document.querySelector('#detail-title').textContent==='Sandbox'");await tap('#detail-back');await wait("!document.querySelector('#game').hidden");
+ await tap('[data-action="0"]');await wait("document.querySelector('#overlay-title')?.textContent==='Restart level?'");await tap('#keep-playing');await wait("!document.querySelector('#game').hidden");assert.equal(await actions(),1);
+ await tap('[data-action="0"]');await wait("document.querySelector('#game-dialog').open");await tap('#do-retry');await wait("document.querySelector('#actions').textContent==='0'");report.checks.push('sandbox level entry and confirmed/cancelled trash actions');
+ assert.equal(await evaluate("document.querySelector('#mode-badge').hidden"),true);
  await sleep(400);
  const before=await evaluate("({board:document.querySelector('#board').toDataURL(),width:innerWidth,height:innerHeight,rect:JSON.stringify(document.querySelector('#board').getBoundingClientRect())})");
  adb('shell','am','start','-a','android.settings.SETTINGS');await sleep(1200);await foreground();await sleep(1200);

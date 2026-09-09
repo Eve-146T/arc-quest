@@ -7,7 +7,7 @@ const ARC = ['#FFFFFF', '#CCCCCC', '#999999', '#666666', '#333333', '#000000', '
 const CANDY = ['#1E93FF', '#FFDC00', '#4FCC30', '#F93C31', '#A356D6', '#FF851B', '#88D8F1', '#E53AA3', '#2EE6A6'];
 
 // ---- persistent state
-let settings = {sound: false, haptic: true, onboarded: false, mode: 'sandbox', ...safeRead('arc-settings', {})};
+let settings = {sound: false, haptic: true, dark: false, onboarded: false, mode: 'sandbox', ...safeRead('arc-settings', {})};
 if (!['run', 'sandbox'].includes(settings.mode)) settings.mode = 'sandbox';
 // One benchmark run at a time: per game, the action history and the official summary.
 let run = safeRead('arc-run-v2', null);
@@ -41,6 +41,10 @@ function feedback(win = false) {
 }
 function updateSettings() {
   save('arc-settings', settings);
+  document.documentElement.dataset.theme = settings.dark ? 'dark' : 'light';
+  window.AndroidGame?.setDarkMode?.(settings.dark);
+  $('meta[name="theme-color"]').content = settings.dark ? '#191827' : '#ffe4f3';
+  $$('.theme-toggle').forEach(b => {b.innerHTML = icon(settings.dark ? 'sun' : 'moon'); b.setAttribute('aria-pressed', String(settings.dark)); b.setAttribute('aria-label', `Turn dark mode ${settings.dark ? 'off' : 'on'}`);});
   $$('.sound-toggle').forEach(b => {b.innerHTML = icon(settings.sound ? 'sound-on' : 'sound-off'); b.setAttribute('aria-pressed', String(settings.sound)); b.setAttribute('aria-label', `Turn sound ${settings.sound ? 'off' : 'on'}`);});
   $$('.haptic-toggle').forEach(b => {b.innerHTML = icon(settings.haptic ? 'vibrate' : 'vibrate-off'); b.setAttribute('aria-pressed', String(settings.haptic)); b.setAttribute('aria-label', `Turn vibration ${settings.haptic ? 'off' : 'on'}`);});
 }
@@ -57,7 +61,7 @@ function confetti(n = 28) {
 function countUp(el, to, decimals = 1, suffix = '') {
   const from = Number(el.dataset.value ?? 0); el.dataset.value = to;
   if (reduced || from === to) {el.textContent = to.toFixed(decimals) + suffix; return;}
-  const t0 = performance.now(), dur = 700;
+  const t0 = performance.now(), dur = 180;
   const tick = t => {const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = (from + (to - from) * e).toFixed(decimals) + suffix; if (k < 1) requestAnimationFrame(tick);};
   requestAnimationFrame(tick);
 }
@@ -70,7 +74,7 @@ function show(name, back = false) {
   screenName = name;
   for (const s of screens) $('#' + s).hidden = s !== name;
   if (name !== 'launch') clearInterval(launchTimer);
-  if (changed && !reduced) $('#' + name).animate([{opacity: .3, transform: `translateX(${back ? -18 : 18}px)`}, {opacity: 1, transform: 'none'}], {duration: 200, easing: 'ease-out'});
+  if (changed && !reduced) {const el = $('#' + name); el.getAnimations().forEach(a => a.cancel()); el.animate([{opacity: .72}, {opacity: 1}], {duration: 110, easing: 'ease-out'});}
 }
 
 // Launch: a 6×6 puzzle that solves itself while the engine warms up.
@@ -122,7 +126,7 @@ const sandboxGold = () => games.reduce((a, g) => a + g.baseline.filter((_, i) =>
 function segments(cls, levels, classOf, extra = '') {return `<span class="segments ${cls}" aria-hidden="true">${Array.from({length: levels}, (_, i) => `<i class="${classOf(i)}"></i>`).join('')}${extra}</span>`;}
 
 function home() {
-  closeDetails(); playing = false; framesToken++; pointer = null; show('home', true);
+  closeGameOverlay(); closeDetails(); playing = false; framesToken++; pointer = null; show('home', true);
   $('.mode-switch').dataset.mode = settings.mode; $$('.mode-switch [data-mode]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === settings.mode)));
   const best = bestRun(); $('#record').hidden = !best;
   $('#best-score').innerHTML = best ? `${best.score.toFixed(1)}<small>%</small>` : '';
@@ -165,7 +169,14 @@ function renderGrid() {
   }).join('');
   $$('[data-game]').forEach(b => b.addEventListener('click', () => settings.mode === 'run' ? openRunGame(b.dataset.game) : levelPicker(b.dataset.game)));
 }
-function setMode(mode) {if (settings.mode === mode) return; settings.mode = mode; updateSettings(); feedback(); home();}
+function setMode(mode) {
+  if (settings.mode === mode) return;
+  const direction = mode === 'run' ? 1 : -1;
+  settings.mode = mode; updateSettings(); feedback(); home();
+  const content = $('#home-scroll'); content.scrollTop = 0;
+  content.getAnimations().forEach(a => a.cancel());
+  if (!reduced) content.animate([{opacity: .45, transform: `translateX(${direction * 12}px)`}, {opacity: 1, transform: 'none'}], {duration: 160, easing: 'cubic-bezier(.2,.8,.2,1)'});
+}
 $$('.mode-switch [data-mode]').forEach(b => b.onclick = () => setMode(b.dataset.mode));
 
 // ---- benchmark run
@@ -191,10 +202,11 @@ function resetRun() {
   run = {startedAt: Date.now(), lastGame: null, games: {}}; persistRun();
 }
 function confirmRetry() {
-  if (!playing || screenName !== 'game' || loadingGame || pending.size) return;
-  detailPage('Restart this level?', `<div class="dialog-stack"><p class="dialog-note">${session.sandbox ? 'This attempt starts over. Your best is kept.' : 'This level starts over. One retry action is added to your score.'}</p><button id="do-retry" class="chunk berry">${icon('trash')}Restart level</button><button id="keep-playing" class="chunk lavender">Keep playing</button></div>`);
-  $('#keep-playing').onclick = goDetailBack;
-  $('#do-retry').onclick = () => {goDetailBack(); act({id: 0}, true);};
+  if (!playing || screenName !== 'game' || loadingGame || pending.size || $('#game-dialog').open) return;
+  gameOverlay('Restart level?', `<p class="overlay-note">${session.sandbox ? 'Your best is kept. This attempt starts over.' : 'One retry action is added to your score.'}</p><div class="overlay-actions"><button id="do-retry" class="chunk berry">${icon('trash')}Restart</button><button id="keep-playing" class="chunk white">Keep playing</button></div>`, 'retry-overlay');
+  $('#keep-playing').onclick = () => closeGameOverlay();
+  $('#do-retry').onclick = () => {closeGameOverlay(); act({id: 0}, true);};
+  $('#keep-playing').focus({preventScroll: true});
 }
 
 // ---- sandbox
@@ -202,10 +214,9 @@ function firstUncleared() {for (const g of games) for (let level = 0; level < g.
 const rating = (id, level, attempt) => sandboxRating(games, sandbox, diamonds, id, level, attempt);
 function levelPicker(id) {
   const g = gameOf(id);
-  detailPage(id.toUpperCase(), `<div class="level-list" style="--level-rows:${Math.ceil(g.levels / 2)};--landscape-rows:${Math.ceil(g.levels / 3)}">${g.baseline.map((human, k) => {
-    const best = sandboxBest(id, k), cls = rating(id, k);
-    const award = cls === 'diamond' ? icon('diamond') + 'Diamond' : cls === 'gold' ? icon('star') + 'Gold' : best != null ? `${human} actions for gold` : 'Not Cleared';
-    return `<button class="level-tile ${cls}" data-level="${k}" aria-label="Level ${k + 1}${best != null ? `, best ${best} actions` : ', Not Cleared'}"><span class="level-tile-main"><img src="./assets/levels/${id}/${k + 1}.png" alt="" width="64" height="64"><span class="level-tile-info"><strong>Level ${k + 1}</strong>${best != null ? `<small>Best <b>${best}</b> actions</small>` : ''}</span></span><span class="level-award">${award}</span></button>`;
+  detailPage(id.toUpperCase(), `<div class="level-list" style="--level-rows:${Math.ceil(g.levels / 3)};--landscape-rows:${Math.ceil(g.levels / 5)}">${g.baseline.map((human, k) => {
+    const best = sandboxBest(id, k), cls = rating(id, k), hint = best != null && best > human;
+    return `<button class="level-tile ${cls}" data-level="${k}" aria-label="Level ${k + 1}, ${cls || 'Not Cleared'}${best != null ? `, best ${best} actions` : ''}"><span class="tile-preview"><img src="./assets/levels/${id}/${k + 1}.png" alt="" width="64" height="64"></span><span class="tile-caption"><strong>${String(k + 1).padStart(2, '0')}</strong>${best != null ? `<span class="tile-best" title="Best: ${best} actions">${icon('bolt')} ${best}</span>` : '<span class="tile-unplayed" aria-hidden="true">—</span>'}</span>${hint ? `<small class="tile-target">${human} actions for gold</small>` : ''}</button>`;
   }).join('')}</div>`, home, 'picker-screen');
   $$('[data-level]').forEach(b => b.onclick = () => {feedback(); playSandbox(id, Number(b.dataset.level));});
 }
@@ -217,14 +228,40 @@ function playSandbox(id, level) {play({game: id, level, sandbox: true});}
 function levelCleared() {
   const g = gameOf(session.game), human = g.baseline[session.level], used = session.attempt, prev = sandboxBest(session.game, session.level);
   if (prev == null || used < prev) {(sandbox[session.game] ??= {})[session.level] = used; save('arc-sandbox-v1', sandbox);}
-  const gold = used <= human, stars = used <= human ? 3 : used <= human * 1.5 ? 2 : 1, last = session.level === g.levels - 1;
-  feedback(true); confetti(gold ? 40 : 22);
-  detailPage(rating(session.game, session.level, used) === 'diamond' ? 'Diamond!' : gold ? 'Gold!' : 'Level cleared!', `<div class="cleared-stars">${rating(session.game, session.level, used) === 'diamond' ? icon('diamond') : [0, 1, 2].map(i => icon('star', i < stars ? '' : 'off')).join('')}</div><div class="score-big">${used}<small> actions</small></div><p class="score-label">${gold ? "" : `${human} actions for gold`}${prev != null && prev < used ? ` · your best ${prev}` : prev != null && used < prev ? ' · new best!' : ''}</p><div class="dialog-stack">${last ? '' : `<button id="next" class="chunk mint">${icon('play-icon')}Next level</button>`}<button id="again" class="chunk ${last ? 'mint' : 'yellow'}">${icon('reset')}Play again</button><button id="levels" class="chunk white">${icon('grid')}All levels</button></div>`, () => {closeDetails(); levelPicker(session.game);});
-  $$('.cleared-stars .icon').forEach((s, i) => s.style.setProperty('--d', `${150 + i * 160}ms`));
-  $('#next')?.addEventListener('click', () => {closeDetails(); playSandbox(session.game, session.level + 1);});
-  $('#again').onclick = () => {closeDetails(); playSandbox(session.game, session.level);};
-  $('#levels').onclick = () => {closeDetails(); home(); levelPicker(session.game);};
+  const award = rating(session.game, session.level, used), last = session.level === g.levels - 1;
+  feedback(true);
+  framesToken++; draw(oldLevelFrame ?? state.frames.at(-1));
+  gameOverlay('Level complete', `<p class="result-level">${session.game.toUpperCase()} · Level ${session.level + 1}</p><div class="result-count"><b>${used}</b><span>actions</span></div><p class="overlay-note">${prev == null || used <= prev ? 'Personal best' : `Best: ${prev} actions`}${used > human ? ` · ${human} for gold` : ''}</p><div class="overlay-actions"><button id="${last ? 'levels' : 'next'}" class="chunk mint">${icon(last ? 'grid' : 'play-icon')}${last ? 'All levels' : 'Next level'}</button><button id="again" class="chunk white">${icon('reset')}Play again</button>${last ? '' : '<button id="levels" class="text-button">All levels</button>'}</div>`, `result-overlay ${award}`, () => {home(); levelPicker(session.game);});
+  $('#next')?.addEventListener('click', () => playSandbox(session.game, session.level + 1));
+  $('#again').onclick = () => playSandbox(session.game, session.level);
+  $('#levels').onclick = () => {home(); levelPicker(session.game);};
 }
+
+// Native modal focus and keyboard containment keep the board inert behind overlays.
+let overlayDismiss = null, overlayClosing = false, oldLevelFrame = null;
+function gameOverlay(title, content, cls, onDismiss = null) {
+  closeGameOverlay(); pointer = null; overlayDismiss = onDismiss;
+  const dialog = $('#game-dialog'); dialog.className = cls;
+  $('#overlay-body').innerHTML = `<header class="overlay-header"><h2 id="overlay-title">${title}</h2><button class="overlay-close" aria-label="Close">${icon('close')}</button></header>${content}`;
+  $('.overlay-close').onclick = dismissGameOverlay;
+  dialog.showModal();
+}
+function closeGameOverlay() {
+  const dialog = $('#game-dialog');
+  overlayClosing = false; dialog.getAnimations().forEach(a => a.cancel()); overlayDismiss = null;
+  if (dialog.open) dialog.close();
+}
+function dismissGameOverlay() {
+  if (overlayClosing || !$('#game-dialog').open) return;
+  const dialog = $('#game-dialog'), done = () => {const cb = overlayDismiss; closeGameOverlay(); cb?.();};
+  overlayClosing = true;
+  if (reduced) done();
+  else dialog.animate([{opacity: 1, transform: 'translateY(0)'}, {opacity: 0, transform: 'translateY(8px)'}], {duration: 90, easing: 'ease-in'}).finished.then(done).catch(() => {});
+}
+$('#game-dialog').addEventListener('cancel', e => {e.preventDefault(); dismissGameOverlay();});
+let backdropPress = false;
+$('#game-dialog').addEventListener('pointerdown', e => {const r = e.currentTarget.getBoundingClientRect(); backdropPress = e.target === e.currentTarget && (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom);});
+$('#game-dialog').addEventListener('click', e => {if (backdropPress && e.target === e.currentTarget) dismissGameOverlay(); backdropPress = false;});
 
 // ---- Full pages. Preserve DOM handlers and scroll when returning to a parent page.
 function closeDetails() {
@@ -247,7 +284,7 @@ function goDetailBack() {
   if (prev?.screen === 'detail') {
     $('#detail-title').textContent = prev.title; $('#detail-body').replaceChildren(...prev.nodes);
     $('#detail').className = prev.cls; $('#detail-body').scrollTop = prev.scroll;
-    if (!reduced) $('#detail-body').animate([{opacity: .2, transform: 'translateX(-18px)'}, {opacity: 1, transform: 'none'}], {duration: 200});
+    if (!reduced) $('#detail-body').animate([{opacity: .72}, {opacity: 1}], {duration: 110});
   } else show(prev?.screen ?? 'home', true);
   prev?.focus?.focus({preventScroll: true});
   cb?.();
@@ -286,7 +323,7 @@ function startWorker() {
 function request(payload, kind, action) {const id = ++requestId; pending.set(id, {at: performance.now(), kind, action, session: sessionId}); worker.postMessage({...payload, requestId: id});}
 function play(config) {
   if (loadingGame || !gameOf(config.game) || (!config.sandbox && config.game !== nextRunGame(games, run))) return;
-  feedback(); session = {...config, attempt: 0}; loadingGame = true; closeDetails();
+  closeGameOverlay(); feedback(); session = {...config, attempt: 0}; loadingGame = true; closeDetails();
   if (bootError) {worker?.terminate(); startWorker();}
   if (ready) beginSession(); else $('#loading').hidden = false;
 }
@@ -313,6 +350,7 @@ function draw(frame) {
 function render(old, initial = false) {
   const g = gameOf(session.game);
   $('#playing-name').textContent = session.game.toUpperCase();
+  $('#mode-badge').hidden = session.sandbox;
   $('#mode-badge').className = `pill mode-badge ${session.sandbox ? 'sandbox' : 'run'}`; $('#mode-badge').innerHTML = icon(session.sandbox ? 'flask' : 'trophy'); $('#mode-badge').setAttribute('aria-label', session.sandbox ? 'About sandbox' : 'View benchmark scores');
   $('#live-score').hidden = session.sandbox; $('#target').hidden = !session.sandbox || sandboxBest(session.game, session.level) == null || isGold(session.game, session.level);
   if (session.sandbox) {$('#actions').textContent = session.attempt; $('#target-value').textContent = g.baseline[session.level];}
@@ -334,7 +372,7 @@ function render(old, initial = false) {
   } else draw(state.frames.at(-1));
   if (initial || old?.available.join() !== state.available.join()) renderControls();
   $('#game-over').hidden = state.state !== 'GAME_OVER';
-  if (session.sandbox) {if (old && state.completed > old.completed) levelCleared(); return;}
+  if (session.sandbox) {if (old && state.completed > old.completed) {oldLevelFrame = old.frames.at(-1); levelCleared();} return;}
   if (old && state.completed > old.completed) {feedback(true); confetti(18); const t = $('#level-toast'); t.textContent = 'Level cleared!'; t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');}
   if (state.state === 'WIN') won();
 }
@@ -351,12 +389,13 @@ function renderControls() {
   html += `<div class="extras${dirs.length ? '' : ' row'}">${extra}</div>`;
   $('#controls').innerHTML = html;
   $$('#controls [data-action]').forEach(b => {
+    if (b.dataset.action === '0') {b.onclick = confirmRetry; return;}
     b.addEventListener('pointerdown', e => {e.preventDefault(); act({id: Number(b.dataset.action)});});
     b.addEventListener('click', e => {if (e.detail === 0) act({id: Number(b.dataset.action)});}); // keyboard and assistive clicks only
   });
 }
 function act(action, confirmed = false) {
-  if (!playing || !state || screenName !== 'game' || loadingGame) return;
+  if (!playing || !state || screenName !== 'game' || loadingGame || $('#game-dialog').open) return;
   if (state.state === 'WIN' || (state.state === 'GAME_OVER' && action.id !== 0)) return;
   if (action.id !== 0 && !state.available.includes(action.id)) return;
   if (action.id === 0 && !confirmed) {confirmRetry(); return;}
@@ -395,6 +434,7 @@ $('#live-score').onclick = () => {feedback(); runScorecard(session.game);};
 $('#about').onclick = () => {feedback(); about();};
 $('#back').onclick = () => {feedback(); const id = session?.game, practice = session?.sandbox; home(); if (practice) levelPicker(id);};
 $('#game-over').addEventListener('click', () => act({id: 0}));
+$$('.theme-toggle').forEach(b => b.onclick = () => {settings.dark = !settings.dark; updateSettings(); feedback();});
 $$('.sound-toggle').forEach(b => b.onclick = () => {settings.sound = !settings.sound; updateSettings(); feedback();});
 $$('.haptic-toggle').forEach(b => b.onclick = () => {settings.haptic = !settings.haptic; updateSettings(); feedback(); if (settings.haptic && !navigator.vibrate && !window.AndroidGame) notice('Vibration isn’t supported by this browser.');});
 $('#cancel-loading').onclick = () => {loadingGame = false; $('#loading').hidden = true; sessionId = null;};
@@ -404,7 +444,7 @@ const SWIPE = 18;
 let pointer = null;
 const board = $('#board');
 board.addEventListener('pointerdown', e => {
-  if (!playing || screenName === 'detail' || !e.isPrimary) return;
+  if (!playing || screenName === 'detail' || $('#game-dialog').open || !e.isPrimary) return;
   e.preventDefault(); board.setPointerCapture(e.pointerId);
   pointer = {x: e.clientX, y: e.clientY, id: e.pointerId};
 });
@@ -426,6 +466,7 @@ board.addEventListener('pointercancel', () => pointer = null);
 board.addEventListener('contextmenu', e => e.preventDefault());
 
 window.arcBack = () => {
+  if ($('#game-dialog').open) {dismissGameOverlay(); return true;}
   if (screenName === 'detail') {goDetailBack(); return true;}
   if (!$('#loading').hidden) {$('#cancel-loading').click(); return true;}
   if (!$('#game').hidden) {$('#back').click(); return true;}
@@ -437,7 +478,7 @@ window.addEventListener('keydown', e => {
   if (!$('#launch').hidden && (e.key === 'Enter' || e.key === ' ')) {e.preventDefault(); $('#launch-start').click(); return;}
   if (e.key === 'Escape') {e.preventDefault(); window.arcBack(); return;}
   if (!playing) return;
-  if (screenName === 'detail') return;
+  if (screenName === 'detail' || $('#game-dialog').open) return;
   const map = {ArrowUp: 1, w: 1, ArrowDown: 2, s: 2, ArrowLeft: 3, a: 3, ArrowRight: 4, d: 4, ' ': 5, z: 7, r: 0};
   if (e.key in map) {e.preventDefault(); act({id: map[e.key]});}
 });
