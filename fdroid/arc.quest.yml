@@ -22,7 +22,7 @@ Builds:
       - echo "deb https://deb.debian.org/debian bookworm main" > /etc/apt/sources.list.d/arc-quest-jdk17.list
       - echo "deb https://security.debian.org/debian-security bookworm-security main" >> /etc/apt/sources.list.d/arc-quest-jdk17.list
       - apt-get update
-      - apt-get install -y --no-install-recommends openjdk-17-jdk-headless nodejs npm zip build-essential autoconf automake libtool pkg-config cmake ccache wget curl texinfo rustup
+      - apt-get install -y --no-install-recommends openjdk-17-jdk-headless nodejs npm zip build-essential autoconf automake libtool libltdl-dev pkg-config cmake ccache wget curl texinfo rustup
       - curl -L --fail -o uv.tar.gz https://github.com/astral-sh/uv/releases/download/0.11.2/uv-x86_64-unknown-linux-gnu.tar.gz
       - echo '7ac2ca0449c8d68dae9b99e635cd3bc9b22a4cb1de64b7c43716398447d42981  uv.tar.gz' | sha256sum -c -
       - tar -xzf uv.tar.gz --strip-components=1 -C /usr/local/bin uv-x86_64-unknown-linux-gnu/uv

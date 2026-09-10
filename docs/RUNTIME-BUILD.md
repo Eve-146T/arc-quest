@@ -27,7 +27,7 @@ backends are pinned in `scripts/runtime-*-requirements.txt` and
 
 ## Build
 
-Use Linux with a native C/C++ toolchain, autoconf, automake, libtool, pkg-config,
+Use Linux with a native C/C++ toolchain, autoconf, automake, libtool, libltdl-dev, pkg-config,
 cmake, ccache, texinfo, zip, wget, Node.js/npm, uv and rustup installed. All generated
 files, toolchain installations and caches stay in `.scratch/` or `.cache/`.
 

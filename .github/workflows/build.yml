@@ -109,7 +109,7 @@ jobs:
       - name: Install runtime compiler prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential autoconf automake libtool pkg-config cmake ccache zip wget texinfo
+          sudo apt-get install -y build-essential autoconf automake libtool libltdl-dev pkg-config cmake ccache zip wget texinfo
       - name: Build runtime from pinned sources
         run: bash scripts/build-runtime.sh
       - name: Verify bundled runtime matches the source build
