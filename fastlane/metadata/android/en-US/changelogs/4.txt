@@ -1,0 +1,6 @@
+Initial 1.0 release:
+- 25 games and 183 levels available offline.
+- Sandbox practice and a resumable benchmark run.
+- Personal bests, gold and hidden diamond ratings.
+- Portrait-only play with touch controls, sound and haptics.
+- Faster startup, visual level previews and an optional intro.

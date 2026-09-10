@@ -11,7 +11,7 @@ export function showInfo(onIntro) {
     <p>Play the full ARC-AGI-3 benchmark on your phone, with the freedom to pause and resume at any time.</p>
     <p>All actions from earlier attempts stay in your score, and restarting adds one action. A high score is harder to earn here: think before you tap.</p>
     <p>“% complete” is the share of levels you’ve cleared. Your score measures action efficiency: matching the human baseline earns 100%; fewer actions can earn up to 115% per level.</p>
-    <p>Found a bug or behavior that differs from the official benchmark? <a href="https://github.com/Eve-146T/arc-agi3/issues" target="_blank" rel="noopener">Report it on GitHub ↗</a></p>
+    <p>Found a bug or behavior that differs from the official benchmark? <a href="https://github.com/Eve-146T/arc-quest/issues" target="_blank" rel="noopener">Report it on GitHub ↗</a></p>
     <div class="info-links"><button id="show-credits" class="text-button">Credits & licenses</button><button id="replay-intro" class="text-button">Show intro</button></div>
   </div>`);
   $('#show-credits').onclick = showCredits;

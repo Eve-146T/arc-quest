@@ -1,10 +1,10 @@
 # Verification
 
-Verified 2026-09-10. Android version **0.1**, versionCode **3**, package **arc.quest**. The original checkout is preserved in commit `6dd0b23`.
+Verified 2026-09-10. Android version **1.0**, versionCode **4**, package **arc.quest**. The original checkout is preserved in the root commit, titled `Save current ARC Quest state`.
 
 The README revision renames the Android package to `arc.quest` and licenses the original app code under AGPL-3.0-only, with the full license included in the APK's Credits screen. Third-party licenses are retained. Debug/review packaging and the WebView smoke test pass after the rename; the device evidence below was captured with the prior package ID. Android treats the renamed package as a separate installation, so existing saves remain in the old app.
 
-Review build: [Android APK](https://apps.muxu.click/d/vskrqnhg). The repository remains private. [Android launch recording](https://apps.muxu.click/d/v736svdi). [Adaptive icon shapes](https://apps.muxu.click/d/2hdy6d2y). [Intro finale](https://apps.muxu.click/d/3y33xa94).
+Previous 0.1 review build: [Android APK](https://apps.muxu.click/d/vskrqnhg). The repository remains private. [Android launch recording](https://apps.muxu.click/d/v736svdi). [Adaptive icon shapes](https://apps.muxu.click/d/2hdy6d2y). [Intro finale](https://apps.muxu.click/d/3y33xa94).
 
 ## Current behavior
 
@@ -59,6 +59,14 @@ The Android app is a bundled WebView/Python WebAssembly game, requiring Android 
 
 ## CI
 
-[GitHub Actions](https://github.com/Eve-146T/arc-agi3/actions) regenerates the official scoring fixtures, runs Node checks and the WebView smoke test, then builds and uploads an Android debug APK named with the manifest version (`arc-quest-0.1-debug`) for branches/PRs. Release tags run the same checks, require the four Eve signing secrets, verify the shared signing certificate and create a GitHub release. The workflow uses the playbook's action majors, JDK 17 and Android SDK 35. The existing AAPT2/Java builder is retained because this is a WebView app, not the libGDX reference app.
+[GitHub Actions](https://github.com/Eve-146T/arc-quest/actions) regenerates the official scoring fixtures, runs Node checks and the WebView smoke test, then builds and uploads an Android debug APK named with the manifest version (`arc-quest-1.0-debug`) for branches/PRs. Release tags run the same checks, require the four Eve signing secrets, verify the shared signing certificate and create a GitHub release. The workflow uses the playbook's action majors, JDK 17 and Android SDK 35. The existing AAPT2/Java builder is retained because this is a WebView app, not the libGDX reference app.
 
 No signing secrets or release tags were added; no visibility change or F-Droid submission was made. The release job is configured but cannot be exercised with the shared Eve key until its secrets are supplied. Local review builds use the existing ignored review key. Unsigned/default builds and explicit release signing are separate, so CI cannot accidentally publish a review-signed release.
+
+
+## Local portrait and listing preparation
+
+Version `1.0`, code `4`, locks the `arc.quest` activity to portrait. The proposed fastlane listing contains editable English title/descriptions, `changelogs/4.txt`, the 512px icon and exactly four portrait captures. The metadata validator passes, and the disabled local F-Droid draft passes the current official metadata JSON schema. This validates structure, not F-Droid acceptance or reproducibility. The user-edited metadata is included in the version 1.0 preparation commit. No F-Droid submission has been made. Remaining release work is recorded in `docs/RELEASE-PREPARATION.md`.
+
+
+`tests/android-portrait.mjs` passed on the Moto G7 Power: home, level browser, gameplay and Info remained 360×760 with user rotation set to 0, 1 and 3. Puzzle pixels stayed unchanged. The test restored rotation settings and app saves. Debug and release-mode portrait APKs build successfully; native manifest inspection reports `screenOrientation=1` (portrait). Evidence is in `test-results/portrait/`.

@@ -37,6 +37,7 @@ jobs:
         run: |
           find public scripts tests -name '*.js' -o -name '*.mjs' | while read -r file; do node --check "$file"; done
           bash -n scripts/build-android.sh
+          node scripts/check-metadata.mjs
           npm test
       - name: Install WebView test harness
         run: npx playwright install --with-deps chromium
@@ -102,6 +103,8 @@ jobs:
           java-version: '17'
       - uses: android-actions/setup-android@v4
       - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Check release tag and metadata
+        run: node scripts/check-metadata.mjs "$GITHUB_REF_NAME"
       - name: Decode signing keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}

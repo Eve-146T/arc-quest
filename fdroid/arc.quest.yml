@@ -1,0 +1,49 @@
+# Review draft only. Replace the commit after the listing and release code are final.
+Disabled: Release preparation and F-Droid build verification are not complete
+Categories:
+  - Puzzle Game
+License: AGPL-3.0-only
+AuthorName: Eve-146T
+SourceCode: https://github.com/Eve-146T/arc-quest
+IssueTracker: https://github.com/Eve-146T/arc-quest/issues
+Changelog: https://github.com/Eve-146T/arc-quest/releases
+AutoName: ARC Quest
+RepoType: git
+Repo: https://github.com/Eve-146T/arc-quest.git
+Binaries: https://github.com/Eve-146T/arc-quest/releases/download/v%v/arc-quest-v%v.apk
+
+Builds:
+  - versionName: '1.0'
+    versionCode: 4
+    disable: Draft awaiting review, runtime provenance and reproducibility checks
+    commit: REPLACE_WITH_REVIEWED_RELEASE_COMMIT
+    sudo:
+      - apt-get update
+      - apt-get install -y --no-install-recommends openjdk-17-jdk-headless nodejs zip
+    output: android/build/arc-quest-unsigned.apk
+    build:
+      - export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+      - export PATH="$JAVA_HOME/bin:$PATH"
+      - export ANDROID_SDK_ROOT=$$SDK$$
+      - test -f "$ANDROID_SDK_ROOT/platforms/android-35/android.jar"
+      - test -x "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt2"
+      - ARC_DEBUG=0 ARC_REVIEW=0 ARC_RELEASE=0 bash scripts/build-android.sh
+
+MaintainerNotes: |-
+    Local, disabled draft. This is a Java WebView shell with a manual AAPT2 build,
+    not a Gradle/libGDX app. Build from the repository root using JDK 17 and SDK 35.
+    The commands above package the currently bundled runtime; they do not yet
+    establish an accepted source-build path for its WebAssembly/Python binaries.
+    Review Pyodide, CPython, NumPy, pydantic-core, repacked wheels and generated
+    bytecode provenance before enabling. No scanner exceptions are asserted.
+    Verify the SDK packages are provisioned on the F-Droid build VM.
+    Replace the commit with the reviewed release's full 40-character SHA.
+    Confirm byte-reproducibility against an Eve-signed release APK and verify
+    the certificate below. The repository is private and has no release yet.
+    Set AutoUpdateMode to Version and UpdateCheckMode to Tags only when ready.
+
+AllowedAPKSigningKeys: 2fe09f50180d92e3b3204992ffc9a8c598087b9a7bac0b12d3f23a1e3687fd7f
+AutoUpdateMode: None
+UpdateCheckMode: None
+CurrentVersion: '1.0'
+CurrentVersionCode: 4

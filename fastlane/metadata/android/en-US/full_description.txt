@@ -1,0 +1,11 @@
+Arc Quest is the ARC AGI 3 benchmark turned into an android game.
+
+<b>Sandbox</b>
+Play every level and try to get the lowest score, in whatever order.
+
+<b>Benchmark</b>
+Play all 25 games in sequence, with the freedom to pause and resume.
+
+Scores measure action efficiency against a human baseline that includes retries.
+
+Original games and engine by the ARC Prize Foundation.

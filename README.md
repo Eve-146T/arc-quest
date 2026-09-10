@@ -5,9 +5,11 @@ src="public/assets/icon-192.png" alt="ARC Quest">
 
 ARC AGI 3 but as a mobile game.
 
-[Android APK](https://github.com/Eve-146T/arc-agi3/releases/latest)
+[Android APK](https://github.com/Eve-146T/arc-quest/releases/latest)
 
-[![F-Droid — coming soon](https://img.shields.io/badge/F--Droid-coming_soon-1976D2?style=for-the-badge)](https://f-droid.org/)
+[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
+     alt="Get it on F-Droid"
+     height="80">](https://f-droid.org/packages/arc.quest/)
 
 ## Screenshots
 

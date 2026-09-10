@@ -88,4 +88,11 @@ Startup launches the worker in parallel with menu metadata, renders home immedia
 
 FT09 exposes a cached per-level hit mask from its original camera mapping and target sprites. The UI ignores taps outside that mask. The bridge still passes raw actions through unchanged so historical replays and reference parity stay intact.
 
-The Android manifest is the CI artifact version source: versionName `0.1`, versionCode `3`, package `arc.quest`. Node/Python metadata use the corresponding semantic version `0.1.0`.
+The Android manifest is the CI artifact version source: versionName `1.0`, versionCode `4`, package `arc.quest`. Node/Python metadata use the corresponding semantic version `1.0.0`.
+
+
+## Store listing draft
+
+Editable fastlane files, the disabled F-Droid recipe and the release order are in [RELEASE-PREPARATION.md](RELEASE-PREPARATION.md). Run `node scripts/check-metadata.mjs` after editing store copy or images. The F-Droid recipe remains disabled pending release preparation and build verification. Store copy has been edited by the user; no F-Droid submission has been made.
+
+The Android activity is locked to portrait. `TMPDIR="$PWD/.scratch" node tests/android-portrait.mjs` checks home, level browser, gameplay and Info on a debug-enabled phone with both landscape rotation settings, then restores device settings and app saves. Landscape CSS remains as a defensive fallback for constrained WebView windows; it does not enable Android rotation.
