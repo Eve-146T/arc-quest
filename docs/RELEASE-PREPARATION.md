@@ -42,3 +42,8 @@ F-Droid removes committed runtime binaries before scanning and rebuilds them.
 Its recipe uses no scanner exceptions. Source schema/lint, the actual F-Droid
 build and APK signature-copy verification must pass before inclusion is ready.
 F-Droid maintainers control acceptance and when the app appears in the catalogue.
+
+Submitted as [New app: ARC Quest, merge request 48462](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/48462).
+The [submission pipeline](https://gitlab.com/Eve-146T/fdroiddata/-/pipelines/2838532715)
+passed all checks, including F-Droid's source build and reproduction of the
+Eve-signed APK. Maintainer acceptance and catalogue publication are pending.

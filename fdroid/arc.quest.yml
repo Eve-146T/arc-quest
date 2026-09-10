@@ -19,11 +19,16 @@ Builds:
     submodules: true
     sudo:
       - echo "deb https://deb.debian.org/debian bookworm main" > /etc/apt/sources.list.d/arc-quest-jdk17.list
-      - echo "deb https://security.debian.org/debian-security bookworm-security main" >> /etc/apt/sources.list.d/arc-quest-jdk17.list
+      - echo "deb https://security.debian.org/debian-security bookworm-security main"
+        >> /etc/apt/sources.list.d/arc-quest-jdk17.list
       - apt-get update
-      - apt-get install -y --no-install-recommends openjdk-17-jdk-headless nodejs npm zip build-essential autoconf automake libtool libltdl-dev pkg-config cmake ccache wget curl texinfo rustup
-      - curl -L --fail -o uv.tar.gz https://github.com/astral-sh/uv/releases/download/0.11.2/uv-x86_64-unknown-linux-gnu.tar.gz
-      - echo '7ac2ca0449c8d68dae9b99e635cd3bc9b22a4cb1de64b7c43716398447d42981  uv.tar.gz' | sha256sum -c -
+      - apt-get install -y --no-install-recommends openjdk-17-jdk-headless nodejs
+        npm zip build-essential autoconf automake libtool libltdl-dev pkg-config cmake
+        ccache wget curl texinfo rustup
+      - arc_uv_url=https://github.com/astral-sh/uv/releases/download/0.11.2
+      - curl -L --fail -o uv.tar.gz "$arc_uv_url/uv-x86_64-unknown-linux-gnu.tar.gz"
+      - printf '%s  %s\n' 7ac2ca0449c8d68dae9b99e635cd3bc9b22a4cb1de64b7c43716398447d42981
+        uv.tar.gz | sha256sum -c -
       - tar -xzf uv.tar.gz --strip-components=1 -C /usr/local/bin uv-x86_64-unknown-linux-gnu/uv
       - rm uv.tar.gz
     output: android/build/arc-quest-unsigned.apk
@@ -37,6 +42,7 @@ Builds:
       - vendor/pyodide/pyodide-build/integration_tests
       - vendor/pyodide/pyodide-build/pyodide_build/tests
       - vendor/pyodide-recipes/packages/micropip/test
+      - vendor/pyodide-recipes/pyodide-build
     build:
       - export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
       - export PATH="$JAVA_HOME/bin:$PATH"
@@ -45,18 +51,20 @@ Builds:
       - bash scripts/build-runtime.sh
       - ARC_DEBUG=0 ARC_REVIEW=0 ARC_RELEASE=0 bash scripts/build-android.sh
 
-MaintainerNotes: |-
-    Java WebView shell with a manual AAPT2/D8 build from the repository root.
-    No Gradle subproject. The app runs all games offline; it is not a website wrapper.
-    The bundled runtime is removed before scanning and rebuilt from pinned Pyodide
-    and pyodide-recipes submodules. These compile CPython 3.13.2, NumPy 2.2.5 and
-    pydantic-core 2.41.5 to WebAssembly. Game/engine archives and Python bytecode are
-    generated from source by scripts/package-runtime.py. There are no scanignore
-    exceptions. Only upstream test fixtures are removed from the submodules.
-    Build tooling includes uv 0.11.2, Emscripten 4.0.9 and Pyodide's pinned Rust
-    nightly/sysroot. See docs/RUNTIME-BUILD.md for sources and reproducibility.
-
 AllowedAPKSigningKeys: 2fe09f50180d92e3b3204992ffc9a8c598087b9a7bac0b12d3f23a1e3687fd7f
+
+MaintainerNotes: |-
+  Java WebView shell with a manual AAPT2/D8 build from the repository root.
+  No Gradle subproject. The app runs all games offline; it is not a website wrapper.
+  The bundled runtime is removed before scanning and rebuilt from pinned Pyodide
+  and pyodide-recipes submodules. These compile CPython 3.13.2, NumPy 2.2.5 and
+  pydantic-core 2.41.5 to WebAssembly. Game/engine archives and Python bytecode are
+  generated from source by scripts/package-runtime.py. There are no scanignore
+  exceptions. Upstream test fixtures and the recipes repository's unused copy
+  of pyodide-build are removed from the submodules.
+  Build tooling includes uv 0.11.2, Emscripten 4.0.9 and Pyodide's pinned Rust
+  nightly/sysroot. See docs/RUNTIME-BUILD.md for sources and reproducibility.
+
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
 CurrentVersion: 1.0.1

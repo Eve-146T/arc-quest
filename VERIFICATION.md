@@ -96,3 +96,11 @@ Version `1.0`, code `4`, locks the `arc.quest` activity to portrait. The propose
 - The downloaded release APK has Eve's expected SHA-256 signing certificate `2fe09f50180d92e3b3204992ffc9a8c598087b9a7bac0b12d3f23a1e3687fd7f`.
 - `apksigcopier compare --unsigned` passed for the independent CI APK against both the local review-signed APK and the published Eve-signed APK.
 - The enabled F-Droid recipe pins the full released commit. Its schema, formatting and local F-Droid lint checks pass. F-Droid's own pipeline and maintainer acceptance are tracked separately.
+
+### F-Droid submission
+
+- Submitted [New app: ARC Quest](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/48462).
+- [Fork pipeline 2838532715](https://gitlab.com/Eve-146T/fdroiddata/-/pipelines/2838532715) passed every job: source checks, schema, lint, canonical metadata formatting, update checks, build and APK check.
+- F-Droid build job `16431471051` compiled the runtime from source and reported `compared built binary to supplied reference binary successfully` for `arc.quest` version code 5.
+- The final recipe removes the recipes repository's unused nested build-tool copy as well as upstream binary test fixtures. This requires no scanner exceptions and does not change the released app.
+- Store inclusion remains subject to F-Droid maintainer review and catalogue publication.
