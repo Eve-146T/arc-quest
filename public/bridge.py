@@ -1,4 +1,4 @@
-"""Browser adapter. Original games and scorecard implementation remain unmodified."""
+"""Android WebView adapter. Original games and scoring remain unmodified."""
 import base64
 import importlib
 import json
@@ -15,11 +15,13 @@ card = None
 meta = None
 last = None
 GUID = 'local-player'
+tap_masks = {}
 
 def start(key, history=None, level=0, sandbox=False):
     """Open a game. `level` > 0 (sandbox) jumps straight to that level after the
     initial full reset, then resets that level so the engine renders its first frame."""
     global game, card, meta, last
+    tap_masks.clear()
     meta = next(m for m in MANIFEST if m['id'] == key)
     random.seed(0)
     np.random.seed(0)
@@ -64,13 +66,32 @@ def act(action_id, x=None, y=None, snapshot=True):
         last = result
     return globals()['snapshot']() if snapshot else None
 
+def tap_mask():
+    """Expose FT09's actual targets for UI hit testing, without filtering engine actions.
+
+    FT09 only recolors these sprites during play; geometry is fixed for each level.
+    Use the same camera conversion and sprite tags as its original step method.
+    """
+    if meta['id'] != 'ft09':
+        return None
+    if game.level_index not in tap_masks:
+        cells = []
+        for y in range(64):
+            for x in range(64):
+                point = game.camera.display_to_grid(x, y)
+                hit = point and any(game.current_level.get_sprite_at(*point, tag)
+                                    for tag in ('Hkx', 'NTi'))
+                cells.append('1' if hit else '0')
+        tap_masks[game.level_index] = ''.join(cells)
+    return tap_masks[game.level_index]
+
 def snapshot(accepted=True):
     info = EnvironmentInfo(game_id=meta['version'], baseline_actions=meta['baseline'])
     score = EnvironmentScorecard.from_scorecard(card, [info]).environments[0].runs[-1].model_dump(mode='json')
     return json.dumps({'id':meta['id'], 'state':last.state.value, 'completed':last.levels_completed,
         'levels':len(meta['baseline']), 'level':game.level_index, 'accepted':accepted, 'frames':[last.frame[-1].tolist()],
         'animation':base64.b64encode(np.asarray(last.frame, dtype=np.uint8).tobytes()).decode() if len(last.frame)>1 else None,
-        'available':last.available_actions, 'score':score, 'fps':meta['fps']})
+        'available':last.available_actions, 'score':score, 'fps':meta['fps'], 'tap_mask':tap_mask()})
 
 def dispatch(payload):
     p = json.loads(payload)

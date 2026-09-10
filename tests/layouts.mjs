@@ -11,7 +11,7 @@ async function bounds(selector,width,height){
  assert.ok(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight&&document.documentElement.scrollWidth<=innerWidth),'viewport overflow');
 }
 try{
- await page.goto(process.env.BASE_URL||'http://localhost:4173');await page.evaluate(games=>{localStorage.setItem('arc-settings',JSON.stringify({onboarded:true,mode:'sandbox'}));localStorage.setItem('arc-sandbox-v1',JSON.stringify(Object.fromEntries(games.map(g=>[g.id,{0:g.baseline[0]+1}]))));},games);await page.reload();await page.click('#launch-start');
+ await page.goto(process.env.BASE_URL||'http://localhost:4173');await page.evaluate(games=>{localStorage.setItem('arc-settings',JSON.stringify({onboarded:true,mode:'sandbox'}));localStorage.setItem('arc-sandbox-v1',JSON.stringify(Object.fromEntries(games.map(g=>[g.id,{0:g.baseline[0]+1}]))));},games);await page.reload();await expect(page.locator('#home')).toBeVisible({timeout:90000});
  for(const [width,height] of [[320,568],[360,640],[390,844],[568,320],[844,390]]){
   await page.setViewportSize({width,height});
   for(const g of games){

@@ -1,15 +1,46 @@
-"""App icons: a white ARC board with a 3x3 colour grid on candy pink (matches public/assets/icon.svg)."""
-from PIL import Image, ImageDraw
+"""Generate one vector puzzle mark for Android launchers, themed icons and startup.
+
+Foreground geometry stays inside the central 66dp safe circle of a 108dp layer.
+Raster exports and shape previews are produced by scripts/icon-previews.mjs.
+"""
 from pathlib import Path
-CELLS = ['#1e93ff', '#ffdc00', '#4fcc30', '#f93c31', '#2b1f5e', '#a356d6', '#ff851b', '#88d8f1', '#e53aa3']
-for size in [192, 512]:
-    im = Image.new('RGB', (size, size), '#ff4fa3')
-    d = ImageDraw.Draw(im)
-    s = size / 192
-    r = lambda x, y, w, h: [x * s, y * s, (x + w) * s, (y + h) * s]
-    d.rounded_rectangle(r(29, 29, 134, 134), radius=27 * s, fill='#2b1f5e')
-    d.rounded_rectangle(r(39, 39, 114, 114), radius=18 * s, fill='#ffffff')
-    for i, color in enumerate(CELLS):
-        d.rounded_rectangle(r(52 + (i % 3) * 31, 52 + (i // 3) * 31, 26, 26), radius=5 * s, fill=color)
-    im.save(Path('public/assets') / f'icon-{size}.png')
-Image.open('public/assets/icon-192.png').save('android/res/drawable/icon.png')
+
+ROOT = Path(__file__).resolve().parents[1]
+NS = 'xmlns:android="http://schemas.android.com/apk/res/android"'
+COLORS = ['#3EC6FF', '#FF6BAB', '#2EE6A6', '#FFD23F']
+PATHS = [
+    'M36,30h10a6,6 0 0 1 6,6v10a6,6 0 0 1 -6,6h-10a6,6 0 0 1 -6,-6v-10a6,6 0 0 1 6,-6z',
+    'M62,30h10a6,6 0 0 1 6,6v10a6,6 0 0 1 -6,6h-10a6,6 0 0 1 -6,-6v-10a6,6 0 0 1 6,-6z',
+    'M36,56h10a6,6 0 0 1 6,6v10a6,6 0 0 1 -6,6h-10a6,6 0 0 1 -6,-6v-10a6,6 0 0 1 6,-6z',
+    'M65,55Q67,53 69,55L79,65Q81,67 79,69L69,79Q67,81 65,79L55,69Q53,67 55,65z',
+]
+CENTERS = [(41, 41), (67, 41), (41, 67), (67, 67)]
+res = ROOT / 'android/res'
+def vector(body, size=108):
+    return f'<vector {NS} android:width="{size}dp" android:height="{size}dp" android:viewportWidth="108" android:viewportHeight="108">\n{body}\n</vector>\n'
+
+def paths(monochrome=False, animate=False):
+    parts = []
+    for i, (path, color, (x, y)) in enumerate(zip(PATHS, COLORS, CENTERS)):
+        fill = '#FFFFFF' if monochrome else color
+        shape = f'    <path android:fillColor="{fill}" android:pathData="{path}"/>'
+        if animate:
+            shape = f'    <group android:name="tile{i}" android:pivotX="{x}" android:pivotY="{y}">\n{shape}\n    </group>'
+        parts.append(shape)
+    return '\n'.join(parts)
+
+(res / 'drawable/ic_launcher_foreground.xml').write_text(vector(paths()))
+(res / 'drawable/ic_launcher_background.xml').write_text(vector('    <path android:fillColor="#2B1F5E" android:pathData="M0,0h108v108H0z"/>'))
+(res / 'drawable/ic_launcher_mono.xml').write_text(vector(paths(monochrome=True)))
+(res / 'drawable/splash_mark.xml').write_text(vector(paths(animate=True), 288))
+(res / 'drawable/splash_animated.xml').write_text(f'<animated-vector {NS} android:drawable="@drawable/splash_mark">\n'+''.join(f'    <target android:name="tile{i}" android:animation="@animator/splash_tile_{i}"/>\n' for i in range(4))+'</animated-vector>\n')
+for path in (res / 'animator').glob('splash_tile_*.xml'):
+    path.unlink()
+for i in range(4):
+    (res / f'animator/splash_tile_{i}.xml').write_text(f'''<set {NS} android:ordering="together">
+    <objectAnimator android:propertyName="scaleX" android:valueFrom="0.35" android:valueTo="1" android:valueType="floatType" android:duration="400" android:startOffset="{i*60}" android:interpolator="@android:interpolator/fast_out_slow_in"/>
+    <objectAnimator android:propertyName="scaleY" android:valueFrom="0.35" android:valueTo="1" android:valueType="floatType" android:duration="400" android:startOffset="{i*60}" android:interpolator="@android:interpolator/fast_out_slow_in"/>
+</set>
+''')
+svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 18 72 72"><rect x="0" y="0" width="108" height="108" fill="#2b1f5e"/>'+''.join(f'<path d="{path}" fill="{color}"/>' for path,color in zip(PATHS,COLORS))+'</svg>\n'
+(ROOT / 'public/assets/icon.svg').write_text(svg)

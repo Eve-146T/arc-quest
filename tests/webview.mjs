@@ -15,11 +15,11 @@ async function count(n){await expect(page.locator('#actions')).toHaveText(String
 async function gameOpen(id){await expect(page.locator('#game')).toBeVisible({timeout:90000});await expect(page.locator('#playing-name')).toHaveText(id.toUpperCase());await waitMotion();}
 async function home(){if(await page.locator('#game-dialog').isVisible()){await page.evaluate(()=>window.arcBack());await expect(page.locator('#game-dialog')).toBeHidden();}for(let i=0;i<5&&!(await page.locator('#home').isVisible());i++){await page.evaluate(()=>window.arcBack());}await expect(page.locator('#home')).toBeVisible();}
 async function sandbox(id,level=0){await home();await page.click('button[data-mode="sandbox"]');await page.click(`[data-game="${id}"]`);await page.click(`[data-level="${level}"]`);await gameOpen(id);}
-async function reload(){await page.reload();await page.click('#launch-start');await expect(page.locator('#home')).toBeVisible();}
+async function reload(){await page.reload();await expect(page.locator('#home')).toBeVisible({timeout:90000});await expect(page.locator('#home')).toBeVisible();}
 async function swipe(dx,dy){const r=await page.locator('#board').boundingBox(),cdp=await context.newCDPSession(page),x=r.x+r.width/2,y=r.y+r.height/2;await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+dx,y:y+dy}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await cdp.detach();}
 async function clickCell(a){const r=await page.locator('#board').boundingBox();await page.touchscreen.tap(r.x+(a.x+.5)/64*r.width,r.y+(a.y+.5)/64*r.height);}
 try{
- await page.goto(BASE);await page.click('#launch-start');await expect(page.locator('#onboarding')).toBeVisible();
+ await page.goto(BASE);await expect(page.locator('#home')).toBeVisible({timeout:90000});await page.click('#about');await page.click('#replay-intro');await expect(page.locator('#onboarding')).toBeVisible();
  for(let i=0;i<3;i++)await page.click('#onboard-next');await page.click('[data-pick="sandbox"]');
  await expect(page.locator('.mode-switch button').first()).toHaveText('SANDBOX');await expect(page.locator('#record')).toBeHidden();await expect(page.locator('.game-card')).toHaveCount(25);await shot('home-sandbox');
  console.log('CHECKPOINT', new Date().toISOString());

@@ -2,11 +2,12 @@ import {sandboxRating, allGold, nextRunGame, completedRecord} from './progress.j
 import {$, $$, icon, safeRead, reduced} from './ui/common.js';
 import {save, notice, feedback, bindSettings, updateSettings as renderSettings, confetti, countUp, suspendSound} from './ui/feedback.js';
 import {show, screenName, detailPage, closeDetails, goDetailBack, gameOverlay, closeGameOverlay, dismissGameOverlay} from './ui/navigation.js';
-import {launch, onboarding, pageIndex, bindIntro} from './ui/intro.js';
+import {onboarding, pageIndex, bindIntro} from './ui/intro.js';
 import {draw, drawAnimationFrame, bindBoard, cancelGesture} from './ui/board.js';
 import {benchmarkHero, sandboxHero, gameCard} from './ui/home.js';
 import {levelGrid} from './ui/levels.js';
 import {gameScorecard, scoreOverview} from './ui/scorecards.js';
+import {showInfo} from './ui/info.js';
 // ---- persistent state
 let settings = {sound: false, haptic: true, onboarded: false, mode: 'sandbox', ...safeRead('arc-settings', {})};
 delete settings.dark; // Remove the retired preference without touching saved progress.
@@ -158,12 +159,23 @@ function levelCleared() {
 let oldLevelFrame = null;
 $('#detail-back').onclick = () => {feedback(); goDetailBack();};
 
+// One native launch animation stays up until the engine and first home frame are ready.
+let enteredApp = false;
+function revealApp() {document.fonts.ready.then(() => requestAnimationFrame(() => window.AndroidGame?.launchReady?.()));}
+function enterApp() {enteredApp = true; settings.onboarded = true; updateSettings(); home(); revealApp();}
+function showLoadError(error) {
+  loadingGame = false; $('#loading').hidden = true; $('#app').inert = false;
+  detailPage('A little hiccup', `<div class="dialog-stack"><p class="dialog-note">Your saved progress is safe. Reload the arcade and try again.</p><button id="reload" class="chunk mint">Reload arcade</button><details class="about-copy"><summary>Details</summary><p class="error-detail"></p></details></div>`);
+  $('#detail .error-detail').textContent = error; $('#reload').onclick = () => location.reload();
+  revealApp();
+}
+
 // ---- engine worker
 function startWorker() {
   worker = new Worker('./engine-worker.js'); ready = false; bootError = null; metrics.boot.startedAt = performance.now();
   worker.onmessage = ({data}) => {
-    if (data.type === 'loading') {$('#loading-text').textContent = data.text; $('#loading-progress').style.width = `${data.progress}%`; $('#boot-bar').style.width = `${Math.max(8, data.progress)}%`;}
-    if (data.type === 'ready') {ready = true; metrics.boot.readyMs = performance.now() - metrics.boot.startedAt; $('#loading-progress').style.width = '100%'; $('#boot-bar').style.width = '100%'; $('.boot').classList.add('done'); if (loadingGame) beginSession();}
+    if (data.type === 'loading') {$('#loading-text').textContent = data.text; $('#loading-progress').style.width = `${data.progress}%`;}
+    if (data.type === 'ready') {ready = true; metrics.boot.readyMs = performance.now() - metrics.boot.startedAt; $('#loading-progress').style.width = '100%'; if (!enteredApp) enterApp(); if (loadingGame) beginSession();}
     if (data.type === 'warm') metrics.boot.warm = data;
     if (data.type === 'result') {
       const req = pending.get(data.requestId); pending.delete(data.requestId); if (!req) return;
@@ -180,12 +192,10 @@ function startWorker() {
     }
     if (data.type === 'error') {
       metrics.errors.push(data.error); pending.delete(data.requestId); if (!data.requestId) bootError = data.error;
-      loadingGame = false; $('#loading').hidden = true; $('#app').inert = false;
-      detailPage('A little hiccup', `<div class="dialog-stack"><p class="dialog-note">Your saved progress is safe. Reload the arcade and try again.</p><button id="reload" class="chunk mint">Reload arcade</button><details class="about-copy"><summary>Details</summary><p class="error-detail"></p></details></div>`);
-      $('#detail .error-detail').textContent = data.error; $('#reload').onclick = () => location.reload();
+      showLoadError(data.error);
     }
   };
-  worker.onerror = e => {bootError = e.message; notice('Could not load the arcade. Reload to try again.');};
+  worker.onerror = e => {bootError = e.message; metrics.errors.push(e.message); showLoadError(e.message);};
 }
 function request(payload, kind, action) {const id = ++requestId; pending.set(id, {at: performance.now(), kind, action, session: sessionId}); worker.postMessage({...payload, requestId: id});}
 function play(config) {
@@ -259,6 +269,7 @@ function act(action, confirmed = false) {
   if (!playing || !state || screenName !== 'game' || loadingGame || $('#game-dialog').open) return;
   if (state.state === 'WIN' || (state.state === 'GAME_OVER' && action.id !== 0)) return;
   if (action.id !== 0 && !state.available.includes(action.id)) return;
+  if (action.id === 6 && state.tap_mask && state.tap_mask[action.y * 64 + action.x] !== '1') return;
   if (action.id === 0 && !confirmed) {confirmRetry(); return;}
   framesToken++; draw(state.frames.at(-1)); feedback(); request({type: 'action', action}, 'action', action);
 }
@@ -282,8 +293,7 @@ function scorecard() {
   $('#export').onclick = downloadScore;
 }
 function about() {
-  detailPage('How it works', `<div class="about-copy"><p>Discover the rules of 25 puzzle games as you play.</p><p><strong>Sandbox</strong><br>Choose any level. Match the human action count for gold.</p><p><strong>Benchmark</strong><br>Play all games in order. “Complete” counts levels cleared. Your score measures action efficiency: 100% matches the human pace, with up to 115% per level.</p><p>Unfinished levels score zero. Retrying costs one action.</p><p class="local-note">Saved on your device. Local practice, not a leaderboard rank.</p><div class="info-links"><a href="./credits.html" target="_blank" rel="noopener">Credits & licenses ↗</a><button id="replay-intro" class="text-button">Show intro</button></div></div>`);
-  $('#replay-intro').onclick = () => {closeDetails(); onboarding(0);};
+  showInfo(() => {closeDetails(); onboarding(0);});
 }
 
 // ---- wiring
@@ -306,7 +316,6 @@ window.arcBack = () => {
 };
 window.addEventListener('keydown', e => {
   if (e.repeat) return;
-  if (!$('#launch').hidden && (e.key === 'Enter' || e.key === ' ')) {e.preventDefault(); $('#launch-start').click(); return;}
   if (e.key === 'Escape') {e.preventDefault(); window.arcBack(); return;}
   if (!playing) return;
   if (loadingGame || screenName === 'detail' || $('#game-dialog').open) return;
@@ -325,5 +334,5 @@ updateSettings();
 try {
   [games, diamonds] = await Promise.all(['./games.json', './diamonds.json'].map(async url => (await fetch(url)).json()));
   games.sort((a, b) => {const first = ['ls20', 'ft09', 'vc33']; const ai = first.indexOf(a.id), bi = first.indexOf(b.id); return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi) || a.id.localeCompare(b.id);});
-  startWorker(); launch();
-} catch (e) {notice('Could not load games. Please reload.'); metrics.errors.push(String(e));}
+  startWorker();
+} catch (e) {metrics.errors.push(String(e)); showLoadError(String(e));}

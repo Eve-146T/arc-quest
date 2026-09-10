@@ -71,11 +71,14 @@ jobs:
           java-version: '17'
       - uses: android-actions/setup-android@v4
       - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Read app version
+        id: version
+        run: node --input-type=module -e 'import fs from "node:fs"; const xml=fs.readFileSync("android/AndroidManifest.xml","utf8"); fs.appendFileSync(process.env.GITHUB_OUTPUT,"name="+xml.match(/android:versionName="([^"]+)"/)[1]+"\n");'
       - name: Build debug APK
         run: ARC_DEBUG=1 scripts/build-android.sh
       - uses: actions/upload-artifact@v7
         with:
-          name: arc-quest-debug
+          name: arc-quest-${{ steps.version.outputs.name }}-debug
           path: android/build/arc-quest.apk
           if-no-files-found: error
 

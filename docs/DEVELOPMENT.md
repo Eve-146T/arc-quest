@@ -79,3 +79,13 @@ Branches, pull requests and manual branch runs execute scoring/UI checks and upl
 Configure `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` and `KEY_PASSWORD` before the first tag. No signing secrets are currently installed. The playbook's `setup-signing.sh` can set them when you are ready; it also pushes a release tag. Tagged builds fail if the secrets are absent; they never fall back to the review key. Bump `android/AndroidManifest.xml` versionCode/versionName before each release. No release tag or F-Droid submission is part of this change.
 
 For local release signing, export `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` and `KEY_PASSWORD`, then run `ARC_RELEASE=1 scripts/build-android.sh`. Without signing variables or an explicit `ARC_DEBUG=1` / `ARC_REVIEW=1`, the script produces only `android/build/arc-quest-unsigned.apk`. Keys, caches and APKs are ignored by Git.
+
+## Startup, icons and input regions
+
+Startup waits for the worker to report ready, renders home, and signals the native splash to fade out after the WebView’s first visual frame. There is no second launch screen or start button. The intro is available from Info only.
+
+`uv run scripts/icons.py` generates matching vector launcher, monochrome and animated splash artwork. `node scripts/icon-previews.mjs` exports the two PNG sizes and renders circle/squircle/rounded-square/themed evidence. Geometry follows the [Android adaptive-icon safe-area guidance](https://developer.android.com/develop/ui/compose/system/icon_design_adaptive); foreground layers have no pre-baked outer mask.
+
+FT09 exposes a cached per-level hit mask from its original camera mapping and target sprites. The UI ignores taps outside that mask. The bridge still passes raw actions through unchanged so historical replays and reference parity stay intact.
+
+The Android manifest is the CI artifact version source: versionName `0.1`, versionCode `2`, package `org.arcquest.game`. Node/Python metadata use the corresponding semantic version `0.1.0`.

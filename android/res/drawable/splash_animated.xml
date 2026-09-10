@@ -3,9 +3,4 @@
     <target android:name="tile1" android:animation="@animator/splash_tile_1"/>
     <target android:name="tile2" android:animation="@animator/splash_tile_2"/>
     <target android:name="tile3" android:animation="@animator/splash_tile_3"/>
-    <target android:name="tile4" android:animation="@animator/splash_tile_4"/>
-    <target android:name="tile5" android:animation="@animator/splash_tile_5"/>
-    <target android:name="tile6" android:animation="@animator/splash_tile_6"/>
-    <target android:name="tile7" android:animation="@animator/splash_tile_7"/>
-    <target android:name="tile8" android:animation="@animator/splash_tile_8"/>
 </animated-vector>

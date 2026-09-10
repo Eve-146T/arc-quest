@@ -29,8 +29,6 @@
   .extras{display:grid;grid-template-columns:repeat(2,46px);gap:7px}
   .extras.row{display:flex}
   .extras.row .chip{width:52px;height:46px}
-  .launch{gap:12px}
-  .pixel-grid{width:120px}
 }
 @media(orientation:landscape) and (max-height:620px){
   #app{max-width:none}
@@ -49,15 +47,21 @@
   .hero{padding:10px 16px 12px;gap:6px;display:grid;grid-template-columns:auto 1fr;grid-template-areas:'top top' 'score bar' 'score meta' 'actions actions';column-gap:22px;align-items:center}
   .hero-top{grid-area:top}.hero-score{grid-area:score;font-size:40px}.hero-bar{grid-area:bar;height:9px}.hero-meta{grid-area:meta;font-size:13px}.hero-actions{grid-area:actions;margin-top:0}
   .hero-actions .chunk{min-height:46px;font-size:17px}.hero-actions .chip{width:46px;height:46px}
-  .launch{flex-direction:row;flex-wrap:wrap;gap:10px 40px}
-  .launch .logo.big{font-size:56px}
-  .launch-tag{width:100%}
-  .pixel-grid{width:130px}
   .page{flex-direction:row;text-align:left;max-width:none;gap:30px}
   .page .art{width:40%;height:auto}
   .page>div:last-child{flex:1}
+  .page h2{font-size:24px}.page p{font-size:14px;line-height:1.35}
+  .art-controls{gap:8px}.art-controls .finger{width:100px}
+  .art-controls .dpad{--s:30px;--h:30px;gap:4px}
+  .art-controls .chip{width:30px;height:30px;border-radius:9px}
+  .finger .tip{width:24px;height:24px;left:24px;top:24px}
+  .page.modes{flex-direction:column;gap:8px;text-align:center}
+  .page.modes .art{width:100%}
+  .mode-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .mode-card{padding:10px;gap:8px;border-radius:16px}
+  .mode-card .icon{width:28px;height:28px}.mode-card strong{font-size:16px}.mode-card small{font-size:12px}
 }
-@media(prefers-reduced-motion:reduce){*,*:before{animation:none!important;transition:none!important}.pixel-grid i{transform:none}}
+@media(prefers-reduced-motion:reduce){*,*:before{animation:none!important;transition:none!important}}
 
 /* Full pages keep the header fixed and scroll only their content. */
 .mode-switch[data-mode="sandbox"] .thumb{transform:none}

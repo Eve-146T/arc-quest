@@ -1,8 +1,8 @@
 import {$, icon, reduced} from './common.js';
 
 // ---- screens
-const screens = ['launch', 'onboarding', 'home', 'game', 'detail'];
-export let screenName = 'launch';
+const screens = ['onboarding', 'home', 'game', 'detail'];
+export let screenName = 'home';
 let detailStack = [], detailReturn = null;
 export function show(name, back = false) {
   const changed = screenName !== name;

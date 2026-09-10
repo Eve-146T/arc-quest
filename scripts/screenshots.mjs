@@ -7,7 +7,7 @@ try{
  const manifest=JSON.parse(await readFile('public/games.json')),ft=manifest.find(g=>g.id==='ft09');
  await page.goto(process.env.BASE_URL||'http://localhost:4173');
  await page.evaluate(({baseline})=>{localStorage.setItem('arc-settings',JSON.stringify({onboarded:true,mode:'sandbox',haptic:true,sound:false}));localStorage.setItem('arc-sandbox-v1',JSON.stringify({ft09:{0:4,1:7,2:baseline[2]+4},ls20:{0:13}}));},ft);
- await page.reload();await page.click('#launch-start');await mkdir('docs/screenshots',{recursive:true});
+ await page.reload();await expect(page.locator('#home')).toBeVisible({timeout:90000});await mkdir('docs/screenshots',{recursive:true});
  const shot=async name=>{await page.screenshot({path:`docs/screenshots/${name}.png`});};
  await shot('sandbox');await page.click('[data-game="ft09"]');await expect(page.locator('[data-level] img').first()).toBeVisible();await shot('levels');
  await page.click('#detail-back');await page.click('[data-game="ft09"]');await page.click('[data-level="3"]');await expect(page.locator('#game')).toBeVisible({timeout:90000});await shot('game');

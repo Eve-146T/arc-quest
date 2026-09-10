@@ -5,9 +5,9 @@ src="public/assets/icon-192.png" alt="ARC Quest">
 
 25 puzzle games. 183 levels. Figure out the rules as you go.
 
-An offline Android app.
+An offline Android app. Version 0.1 · `org.arcquest.game`.
 
-[Android APK](https://apps.muxu.click/d/846nh7yi)
+[Android APK](https://apps.muxu.click/d/ihdu86z4)
 
 ## Screenshots
 

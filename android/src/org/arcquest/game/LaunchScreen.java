@@ -40,7 +40,7 @@ final class LaunchScreen {
         }
         activity.setContentView(content);
         // A failed page must not trap the player behind an endless splash.
-        web.postDelayed(this::onReady, 4000);
+        web.postDelayed(this::onReady, 45000);
     }
 
     void onReady() {

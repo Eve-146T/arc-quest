@@ -18,6 +18,12 @@ for(const g of games){
     const s=call({type:'start',game:g.id,level,sandbox:true});
     assert.equal(s.state,'NOT_FINISHED',`${g.id} level ${level+1} state`);assert.equal(s.level,level,`${g.id} level index`);assert.equal(s.completed,0);
     assert.ok(s.frames[0].length===64&&s.frames[0].every(r=>r.length===64),'frame shape');
+    if (g.id === 'ft09') {
+      assert.equal(s.tap_mask.length, 4096);
+      assert.match(s.tap_mask, /^[01]+$/);
+      assert.ok(s.tap_mask.includes('1'), 'Every FT09 level must retain clickable targets');
+      assert.equal(s.tap_mask[0], '0', 'Board background is not a target');
+    } else assert.equal(s.tap_mask, null);
     // The frame must differ from level 1's frame for every later level, otherwise the jump did nothing.
     if(level>0){const first=call({type:'start',game:g.id,level:0,sandbox:true});const same=JSON.stringify(first.frames[0])===JSON.stringify(s.frames[0]);report.push({game:g.id,level:level+1,identicalToLevel1:same});}
     // A reset at the level stays on that level and costs nothing in sandbox terms.
