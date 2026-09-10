@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import py_compile
+import re
 import shutil
 import sys
 import tempfile
@@ -46,20 +47,28 @@ def package_wheel(source, target, scratch):
     with zipfile.ZipFile(source) as archive:
         entries = {name: archive.read(name) for name in archive.namelist()
                    if not name.endswith('.pyc')}
+    for name, data in entries.items():
+        if name == 'numpy/__config__.py' or '.dist-info/sboms/' in name:
+            data = data.replace(str(ROOT).encode(), b'/build/arc-quest')
+            data = re.sub(rb'/build/arc-quest/\.scratch/runtime-tmp/build-env-[^/"\s]+',
+                          b'/build/arc-quest/.scratch/runtime-tmp/build-env', data)
+            entries[name] = data
     extra = {}
     for name, data in entries.items():
         if name.endswith('.py') and '.dist-info/' not in name and '.data/' not in name:
             extra[cache_path(name)] = bytecode(data, '/lib/python3.13/site-packages/' + name, scratch)
     record_name = next(name for name in entries if name.endswith('.dist-info/RECORD'))
-    rows = list(csv.reader(io.StringIO(entries[record_name].decode())))
-    rows = [row for row in rows if not row[0].endswith('.pyc')]
-    for name, data in sorted(extra.items()):
+    entries.update(extra)
+    rows = []
+    for name, data in sorted(entries.items()):
+        if name == record_name:
+            rows.append([name, '', ''])
+            continue
         digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(b'=').decode()
         rows.append([name, 'sha256=' + digest, str(len(data))])
     buffer = io.StringIO()
     csv.writer(buffer, lineterminator='\n').writerows(rows)
     entries[record_name] = buffer.getvalue().encode()
-    entries.update(extra)
     with zipfile.ZipFile(target, 'w') as archive:
         for name, data in sorted(entries.items()):
             write_entry(archive, name, data)
@@ -122,6 +131,7 @@ def main():
 
     dependency('numpy')
     dependency('pydantic')
+    lock['packages'] = {name: lock['packages'][name] for name in sorted(needed)}
     RUNTIME.mkdir(parents=True, exist_ok=True)
     scratch_root = ROOT / '.scratch'
     scratch_root.mkdir(exist_ok=True)

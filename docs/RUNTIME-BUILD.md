@@ -57,7 +57,12 @@ rebuilds them from source. Its recipe does not suppress scanner findings.
 
 Runtime ZIPs have a fixed entry order, timestamp and permissions. Bytecode uses a
 fixed Python version, hash seed and runtime paths. Compiler paths are mapped to
-`/build/arc-quest`; APK packaging removes local uid/gid and timestamp fields and
+`/build/arc-quest`, including generated NumPy configuration and package SBOMs.
+The disposable Emscripten copy sorts port discovery to fix library link order.
+A CPython build patch fixes its compiled installation prefix; the WebView runtime
+continues to use Pyodide’s configured Python home.
+The runtime lock contains only shipped packages, excluding unused test archives.
+APK packaging removes local uid/gid and timestamp fields and
 preserves ZIP alignment when signing.
 
 The release CI source-build job checks that regenerated assets match the committed

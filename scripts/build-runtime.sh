@@ -57,12 +57,28 @@ PY
     touch "$ARC_WORK/.sources-ready"
 fi
 export PYODIDE_ROOT="$ARC_WORK/pyodide"
+cp scripts/runtime-cpython-prefix.patch "$PYODIDE_ROOT/cpython/patches/9999-reproducible-prefix.patch"
 cp scripts/runtime-package-constraints.txt "$PYODIDE_ROOT/tools/constraints.txt"
 export EXTRA_CFLAGS="-ffile-prefix-map=$ARC_ROOT=/build/arc-quest"
 export RUSTFLAGS="-C link-arg=-sSIDE_MODULE=2 -Z link-native-libraries=yes -Z emscripten-wasm-eh --remap-path-prefix=$ARC_ROOT=/build/arc-quest"
 (
     cd "$PYODIDE_ROOT"
     touch .pyodide_build_installed
+    make emsdk/emsdk/.complete
+    # Emscripten discovers ports using filesystem order, which changes the
+    # bzip2/zlib link order and the resulting WebAssembly between machines.
+    python - <<'PY'
+from pathlib import Path
+path = Path('emsdk/emsdk/upstream/emscripten/tools/ports/__init__.py')
+source = path.read_text()
+for directory in ('ports_dir', 'contrib_dir'):
+    source = source.replace(f'in os.listdir({directory}):',
+                            f'in sorted(os.listdir({directory})):')
+path.write_text(source)
+PY
+    # Upstream omits the WebAssembly files from this target's dependencies,
+    # although the loader's build ID hashes them. Refresh it on cached builds.
+    rm -f dist/pyodide.js
     make all-but-packages
     # The default 'always' set includes optional stdlib modules which ARC Quest
     # does not ship or import. Build only the six required dependency wheels.

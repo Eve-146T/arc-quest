@@ -81,3 +81,10 @@ Version `1.0`, code `4`, locks the `arc.quest` activity to portrait. The propose
 - Current fdroiddata schema, `fdroid lint` and YAML formatting checks passed for the prepared recipe. Current fdroidserver source scanning passed with zero findings after the recipe's removals, without scanignore/scandelete exceptions. Removed inputs are the previously bundled runtime archives and unused upstream test fixtures; production runtime binaries are compiled after scanning.
 - Store metadata validates for 1.0.1/code 5, with the existing four screenshots. README copy and prior deletions remain unchanged.
 - Independent GitHub source-build verification, publication of 1.0.1 and the actual F-Droid build/submission pipeline are still pending at this commit. The local recipe stays disabled until the published release commit can be inserted.
+
+### Independent runtime-build corrections
+
+- GitHub source compilation succeeded after adding `libltdl-dev`.
+- Independent output comparison exposed filesystem-dependent Emscripten port link order and build paths in CPython, NumPy configuration and the pydantic-core SBOM. The build now sorts ports, fixes CPython's compiled prefix and normalizes generated metadata while recalculating wheel RECORD checksums. The lock file excludes unused test archives.
+- A clean local CPython rebuild passed. All 825 reference states across 25 games and the complete WebView UI suite passed with the rebuilt runtime.
+- The loader is rebuilt on cached runs so its build ID tracks the current WebAssembly. Independent CI comparison and F-Droid release/submission remain pending until their actual results are recorded.

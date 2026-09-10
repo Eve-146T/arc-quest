@@ -1,0 +1,13 @@
+--- a/Makefile.pre.in
++++ b/Makefile.pre.in
+@@ -1686,8 +1686,8 @@
+ 
+ Modules/getpath.o: $(srcdir)/Modules/getpath.c Python/frozen_modules/getpath.h Makefile $(PYTHON_HEADERS)
+ 	$(CC) -c $(PY_CORE_CFLAGS) -DPYTHONPATH='"$(PYTHONPATH)"' \
+-		-DPREFIX='"$(prefix)"' \
+-		-DEXEC_PREFIX='"$(exec_prefix)"' \
++		-DPREFIX='"/build/arc-quest/.scratch/runtime-build/pyodide/cpython/installs/python-3.13.2"' \
++		-DEXEC_PREFIX='"/build/arc-quest/.scratch/runtime-build/pyodide/cpython/installs/python-3.13.2"' \
+ 		-DVERSION='"$(VERSION)"' \
+ 		-DVPATH='"$(VPATH)"' \
+ 		-DPLATLIBDIR='"$(PLATLIBDIR)"' \
