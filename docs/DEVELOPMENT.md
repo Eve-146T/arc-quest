@@ -88,4 +88,4 @@ Startup launches the worker in parallel with menu metadata, renders home immedia
 
 FT09 exposes a cached per-level hit mask from its original camera mapping and target sprites. The UI ignores taps outside that mask. The bridge still passes raw actions through unchanged so historical replays and reference parity stay intact.
 
-The Android manifest is the CI artifact version source: versionName `0.1`, versionCode `3`, package `org.arcquest.game`. Node/Python metadata use the corresponding semantic version `0.1.0`.
+The Android manifest is the CI artifact version source: versionName `0.1`, versionCode `3`, package `arc.quest`. Node/Python metadata use the corresponding semantic version `0.1.0`.

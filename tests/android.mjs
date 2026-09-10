@@ -8,7 +8,7 @@ const adb=(...a)=>execFileSync(ADB,a,{encoding:'utf8',maxBuffer:1<<26});
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 mkdirSync('test-results/android',{recursive:true});
 async function attach(){
- let sock='';for(let i=0;i<40&&!sock;i++){const pid=adb('shell','pidof','org.arcquest.game').trim().split(/\s+/)[0],name='webview_devtools_remote_'+pid;sock=pid&&adb('shell','cat','/proc/net/unix').includes(name)?name:'';if(!sock)await sleep(250);}
+ let sock='';for(let i=0;i<40&&!sock;i++){const pid=adb('shell','pidof','arc.quest').trim().split(/\s+/)[0],name='webview_devtools_remote_'+pid;sock=pid&&adb('shell','cat','/proc/net/unix').includes(name)?name:'';if(!sock)await sleep(250);}
  assert.ok(sock,'WebView is not inspectable: install a debug build');adb('forward','tcp:9223','localabstract:'+sock);
  let target;for(let i=0;i<40&&!target;i++){try{target=(await(await fetch('http://localhost:9223/json')).json()).find(x=>x.type==='page'&&/ARC Quest/.test(x.title));}catch{}if(!target)await sleep(250);}
  assert.ok(target,'No ARC Quest page');
@@ -18,8 +18,8 @@ async function attach(){
  return {ws,send};
 }
 // The phone may be shared: if another app took the screen, bring ARC Quest back (its WebView survives).
-const foreground=async()=>{const top=adb('shell','dumpsys','activity','activities').split('\n').find(l=>/topResumedActivity/.test(l))||'';if(!/org\.arcquest\.game/.test(top)){adb('shell','am','start','-n','org.arcquest.game/.MainActivity');await sleep(1200);return true;}return false;};
-const launchApp=async()=>{adb('shell','am','force-stop','org.arcquest.game');adb('shell','am','start','-n','org.arcquest.game/.MainActivity');await sleep(2500);return attach();};
+const foreground=async()=>{const top=adb('shell','dumpsys','activity','activities').split('\n').find(l=>/topResumedActivity/.test(l))||'';if(!/arc\.quest/.test(top)){adb('shell','am','start','-n','arc.quest/.MainActivity');await sleep(1200);return true;}return false;};
+const launchApp=async()=>{adb('shell','am','force-stop','arc.quest');adb('shell','am','start','-n','arc.quest/.MainActivity');await sleep(2500);return attach();};
 let {ws,send}=await launchApp();
 const evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text);return r.result.value;};
 const wait=async(predicate,ms=20000)=>{const t0=Date.now();while(Date.now()-t0<ms){if(await evaluate(predicate).catch(()=>false))return;await sleep(40);}throw Error('Timed out: '+predicate);};
@@ -77,5 +77,5 @@ try{
 }finally{
  await evaluate(`localStorage.clear();for(const [key,value] of Object.entries(${backup}))localStorage.setItem(key,value)`);
  ws.close();
- adb('shell','am','force-stop','org.arcquest.game');adb('shell','am','start','-n','org.arcquest.game/.MainActivity');
+ adb('shell','am','force-stop','arc.quest');adb('shell','am','start','-n','arc.quest/.MainActivity');
 }

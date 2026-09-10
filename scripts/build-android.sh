@@ -22,7 +22,7 @@ rm -f android/build/arc-quest.apk
 DEBUG_FLAG=()
 if [ "${ARC_DEBUG:-0}" = "1" ]; then DEBUG_FLAG=(--debug-mode); fi
 "$BUILD_TOOLS/aapt2" link "${DEBUG_FLAG[@]}" -o android/build/resources.apk -I "$PLATFORM" --manifest android/AndroidManifest.xml --java android/build/generated --min-sdk-version 26 --target-sdk-version 35 -A dist android/build/resources.zip
-javac --release 8 -classpath "$PLATFORM" -d android/build/classes android/src/org/arcquest/game/*.java android/build/generated/org/arcquest/game/R.java
+javac --release 8 -classpath "$PLATFORM" -d android/build/classes android/src/arc/quest/*.java android/build/generated/arc/quest/R.java
 jar cf android/build/classes.jar -C android/build/classes .
 "$BUILD_TOOLS/d8" --lib "$PLATFORM" --min-api 26 --output android/build/dex android/build/classes.jar
 cp android/build/resources.apk android/build/unsigned.apk

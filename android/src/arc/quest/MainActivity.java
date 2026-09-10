@@ -1,4 +1,4 @@
-package org.arcquest.game;
+package arc.quest;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;

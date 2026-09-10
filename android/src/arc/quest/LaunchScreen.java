@@ -1,4 +1,4 @@
-package org.arcquest.game;
+package arc.quest;
 
 import android.animation.ValueAnimator;
 import android.app.Activity;

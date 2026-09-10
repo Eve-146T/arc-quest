@@ -1,8 +1,10 @@
 # Verification
 
-Verified 2026-09-10. Android version **0.1**, versionCode **3**, package **org.arcquest.game**. The original checkout is preserved in commit `6dd0b23`.
+Verified 2026-09-10. Android version **0.1**, versionCode **3**, package **arc.quest**. The original checkout is preserved in commit `6dd0b23`.
 
-Review build: [Android APK](https://apps.muxu.click/d/yav8ww4s). The repository remains private. [Android launch recording](https://apps.muxu.click/d/v736svdi). [Adaptive icon shapes](https://apps.muxu.click/d/2hdy6d2y). [Intro finale](https://apps.muxu.click/d/3y33xa94).
+The README revision renames the Android package to `arc.quest` and licenses the original app code under AGPL-3.0-only, with the full license included in the APK's Credits screen. Third-party licenses are retained. Debug/review packaging and the WebView smoke test pass after the rename; the device evidence below was captured with the prior package ID. Android treats the renamed package as a separate installation, so existing saves remain in the old app.
+
+Review build: [Android APK](https://apps.muxu.click/d/vskrqnhg). The repository remains private. [Android launch recording](https://apps.muxu.click/d/v736svdi). [Adaptive icon shapes](https://apps.muxu.click/d/2hdy6d2y). [Intro finale](https://apps.muxu.click/d/3y33xa94).
 
 ## Current behavior
 

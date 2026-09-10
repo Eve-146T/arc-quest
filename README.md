@@ -3,11 +3,11 @@ src="public/assets/icon-192.png" alt="ARC Quest">
 
 # ARC Quest
 
-25 puzzle games. 183 levels. Figure out the rules as you go.
+ARC AGI 3 but as a mobile game.
 
-An offline Android app. Version 0.1 · `org.arcquest.game`.
+[Android APK](https://github.com/Eve-146T/arc-agi3/releases/latest)
 
-[Android APK](https://apps.muxu.click/d/yav8ww4s)
+[![F-Droid — coming soon](https://img.shields.io/badge/F--Droid-coming_soon-1976D2?style=for-the-badge)](https://f-droid.org/)
 
 ## Screenshots
 
@@ -18,28 +18,8 @@ An offline Android app. Version 0.1 · `org.arcquest.game`.
   <img src="docs/screenshots/complete.png" width="22%" alt="A completed level over the board">
 </p>
 
-## Gameplay
-
-- **Sandbox:** choose any level. Match the human action count for gold.
-- **Benchmark:** play all 25 games in order. Every action counts.
-- Tap the board, swipe, or use the buttons. Each game has its own controls.
-- Earn gold everywhere to reveal diamonds for matching or beating public level records.
-
-No account, ads or gameplay server. Progress stays on your device.
-
-## Build
-
-```sh
-npm ci
-npm run dev
-```
-
-Build an installable review APK with `ARC_REVIEW=1 scripts/build-android.sh`. GitHub Actions checks every change and uploads a debug APK; `v*` tags build signed releases once the Eve signing secrets are configured.
-
-[Development](docs/DEVELOPMENT.md) · [Verification](VERIFICATION.md)
-
 ## Credits & licenses
 
-Original games and engine by the [ARC Prize Foundation](https://arcprize.org/), under the [MIT license](public/licenses/ARC-MIT.txt). [Fredoka](public/licenses/Fredoka-OFL.txt) by Milena Brandão. Diamond records from [ARC3.Games](https://arc3.games/). Interface inspired by [Cube Run](https://github.com/Eve-146T/cube-run).
+Original games and engine by the [ARC Prize Foundation](https://arcprize.org/), under the [MIT license](public/licenses/ARC-MIT.txt). [Fredoka](public/licenses/Fredoka-OFL.txt) by Milena Brandão. Diamond records from [ARC3.Games](https://arc3.games/).
 
-Scores are local practice results, not official leaderboard submissions.
+ARC Quest is licensed under the [GNU Affero General Public License v3.0](LICENSE). Third-party components retain their own licenses.

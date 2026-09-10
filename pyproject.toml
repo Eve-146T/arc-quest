@@ -1,6 +1,7 @@
 [project]
 name = "arc-quest"
 version = "0.1.0"
+license = "AGPL-3.0-only"
 requires-python = ">=3.13"
 dependencies = ["arc-agi==0.9.9", "arcengine==0.9.3", "pytest>=9.0"]
 
