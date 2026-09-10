@@ -8,8 +8,6 @@
 .page h2{font-size:30px;font-weight:700;line-height:1.1;letter-spacing:.5px}
 .page p{font-size:17px;line-height:1.5;color:var(--ink-soft)}
 .page .art{min-height:150px;width:100%;display:grid;place-items:center}
-.page.modes{gap:14px}
-.page.modes .art{min-height:0}
 @keyframes page-in{from{opacity:0;transform:translateX(50px) scale(.96)}to{opacity:1;transform:none}}
 @keyframes page-out{to{opacity:0;transform:translateX(-50px) scale(.96)}}
 .onboard-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0}
@@ -39,10 +37,15 @@
 @keyframes score-loop{0%,55%,100%{transform:scaleX(1);opacity:1}72%{transform:scaleX(.05);opacity:.3}90%{transform:scaleX(1);opacity:1}}
 .formula{padding:14px 12px;background:var(--card);border-radius:16px;text-align:center;font-size:18px;color:var(--ink);box-shadow:0 5px 0 #cfc6e0;font-weight:650}
 .formula small{display:block;font-size:13px;font-weight:400;margin-top:5px;color:var(--ink-soft)}
-.mode-cards{display:flex;flex-direction:column;gap:14px;width:100%}
-.mode-card{--lip:#cfc6e0;background:var(--card);border-radius:22px;box-shadow:0 6px 0 var(--lip);padding:16px 18px;display:flex;align-items:center;gap:14px;text-align:left;transition:transform .08s,box-shadow .08s}
-.mode-card .icon{width:40px;height:40px;stroke-width:2.4}
-.mode-card strong{display:block;font-size:20px;letter-spacing:1px}
-.mode-card small{display:block;font-size:14px;color:var(--ink-soft);line-height:1.35;margin-top:3px}
-.mode-card.run{--lip:#1f9c71;background:var(--hero-run)}
-.mode-card.sandbox{--lip:#ad8f2b;background:var(--hero-sandbox)}
+/* A single, celebratory finish keeps the selected home tab intact. */
+.finale-copy{display:flex;flex-direction:column;align-items:center;gap:24px;width:100%}
+.page.finale h2{font-size:38px;letter-spacing:-.5px}
+#intro-go{min-height:60px;padding:0 22px;white-space:nowrap}
+.onboard-nav.finished{justify-content:center;min-height:58px}
+.go-art{position:relative;width:220px;height:220px;display:grid;place-items:center}
+.go-badge{width:144px;height:144px;border-radius:32px;box-shadow:0 8px 0 #1b123e;animation:go-bounce 3.2s ease-in-out infinite}
+.go-sparks{position:absolute;inset:0}
+.go-sparks i{position:absolute;left:calc(50% - 4px);top:calc(50% - 10px);width:8px;height:20px;border-radius:4px;background:var(--pink);transform:rotate(var(--r)) translateY(-101px);animation:go-spark 3.2s ease-in-out infinite;animation-delay:var(--d)}
+.go-sparks i:nth-child(2n){background:var(--sky)}.go-sparks i:nth-child(3n){background:var(--gold)}
+@keyframes go-bounce{0%,55%,100%{transform:rotate(-8deg) translateY(0)}68%{transform:rotate(5deg) translateY(-10px)}82%{transform:rotate(-10deg) translateY(2px)}}
+@keyframes go-spark{0%,55%,100%{transform:rotate(var(--r)) translateY(-101px) scale(.7);opacity:.5}72%{transform:rotate(var(--r)) translateY(-111px) scale(1);opacity:1}}

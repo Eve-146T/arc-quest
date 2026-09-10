@@ -38,8 +38,10 @@ for path in (res / 'animator').glob('splash_tile_*.xml'):
     path.unlink()
 for i in range(4):
     (res / f'animator/splash_tile_{i}.xml').write_text(f'''<set {NS} android:ordering="together">
-    <objectAnimator android:propertyName="scaleX" android:valueFrom="0.35" android:valueTo="1" android:valueType="floatType" android:duration="400" android:startOffset="{i*60}" android:interpolator="@android:interpolator/fast_out_slow_in"/>
-    <objectAnimator android:propertyName="scaleY" android:valueFrom="0.35" android:valueTo="1" android:valueType="floatType" android:duration="400" android:startOffset="{i*60}" android:interpolator="@android:interpolator/fast_out_slow_in"/>
+    <objectAnimator android:propertyName="scaleX" android:valueFrom="0.5" android:valueTo="1" android:valueType="floatType" android:duration="400" android:startOffset="{i*60}" android:interpolator="@android:interpolator/fast_out_slow_in"/>
+    <objectAnimator android:propertyName="scaleY" android:valueFrom="0.5" android:valueTo="1" android:valueType="floatType" android:duration="400" android:startOffset="{i*60}" android:interpolator="@android:interpolator/fast_out_slow_in"/>
+    <objectAnimator android:propertyName="rotation" android:valueFrom="{-18 if i % 2 == 0 else 18}" android:valueTo="0" android:valueType="floatType" android:duration="400" android:startOffset="{i*60}" android:interpolator="@android:interpolator/fast_out_slow_in"/>
+    <objectAnimator android:propertyName="translateY" android:valueFrom="{-10 if i < 2 else 10}" android:valueTo="0" android:valueType="floatType" android:duration="400" android:startOffset="{i*60}" android:interpolator="@android:interpolator/fast_out_slow_in"/>
 </set>
 ''')
 svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 18 72 72"><rect x="0" y="0" width="108" height="108" fill="#2b1f5e"/>'+''.join(f'<path d="{path}" fill="{color}"/>' for path,color in zip(PATHS,COLORS))+'</svg>\n'

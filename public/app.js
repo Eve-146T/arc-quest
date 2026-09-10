@@ -159,10 +159,9 @@ function levelCleared() {
 let oldLevelFrame = null;
 $('#detail-back').onclick = () => {feedback(); goDetailBack();};
 
-// One native launch animation stays up until the engine and first home frame are ready.
-let enteredApp = false;
-function revealApp() {document.fonts.ready.then(() => requestAnimationFrame(() => window.AndroidGame?.launchReady?.()));}
-function enterApp() {enteredApp = true; settings.onboarded = true; updateSettings(); home(); revealApp();}
+// Show the usable menu while the independent game worker initializes in the background.
+function revealApp() {document.fonts.ready.then(() => requestAnimationFrame(() => {metrics.boot.menuReadyMs = performance.now(); window.AndroidGame?.launchReady?.();}));}
+function enterApp() {settings.onboarded = true; updateSettings(); home(); revealApp();}
 function showLoadError(error) {
   loadingGame = false; $('#loading').hidden = true; $('#app').inert = false;
   detailPage('A little hiccup', `<div class="dialog-stack"><p class="dialog-note">Your saved progress is safe. Reload the arcade and try again.</p><button id="reload" class="chunk mint">Reload arcade</button><details class="about-copy"><summary>Details</summary><p class="error-detail"></p></details></div>`);
@@ -175,7 +174,7 @@ function startWorker() {
   worker = new Worker('./engine-worker.js'); ready = false; bootError = null; metrics.boot.startedAt = performance.now();
   worker.onmessage = ({data}) => {
     if (data.type === 'loading') {$('#loading-text').textContent = data.text; $('#loading-progress').style.width = `${data.progress}%`;}
-    if (data.type === 'ready') {ready = true; metrics.boot.readyMs = performance.now() - metrics.boot.startedAt; $('#loading-progress').style.width = '100%'; if (!enteredApp) enterApp(); if (loadingGame) beginSession();}
+    if (data.type === 'ready') {ready = true; metrics.boot.readyMs = performance.now() - metrics.boot.startedAt; $('#loading-progress').style.width = '100%'; if (loadingGame) beginSession();}
     if (data.type === 'warm') metrics.boot.warm = data;
     if (data.type === 'result') {
       const req = pending.get(data.requestId); pending.delete(data.requestId); if (!req) return;
@@ -202,6 +201,8 @@ function play(config) {
   if (loadingGame || !gameOf(config.game) || (!config.sandbox && config.game !== nextRunGame(games, run))) return;
   closeGameOverlay(); cancelGesture(); feedback(); session = {...config, attempt: 0}; loadingGame = true;
   $('#loading-title').textContent = `Opening ${config.game.toUpperCase()}…`;
+  const level = config.sandbox ? config.level : runGame(config.game)?.summary?.levels_completed ?? 0;
+  $('#loading-preview').style.setProperty('--preview', `url("./assets/levels/${config.game}/${level + 1}.png")`);
   $('#loading').hidden = false; $('#app').inert = true;
   $('#cancel-loading').focus({preventScroll: true});
   if (bootError) {worker?.terminate(); startWorker();}
@@ -332,7 +333,8 @@ bindIntro({settings, home, updateSettings});
 bindBoard({getState: () => state, canInput: () => playing && !loadingGame && screenName === 'game' && !$('#game-dialog').open, act});
 updateSettings();
 try {
+  startWorker();
   [games, diamonds] = await Promise.all(['./games.json', './diamonds.json'].map(async url => (await fetch(url)).json()));
   games.sort((a, b) => {const first = ['ls20', 'ft09', 'vc33']; const ai = first.indexOf(a.id), bi = first.indexOf(b.id); return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi) || a.id.localeCompare(b.id);});
-  startWorker();
+  if (!bootError) enterApp();
 } catch (e) {metrics.errors.push(String(e)); showLoadError(String(e));}

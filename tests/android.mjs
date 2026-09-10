@@ -32,6 +32,7 @@ const swipeAt=(x1,y1,x2,y2,ms=120)=>adb('shell','input','swipe',...[x1,y1,x2,y2]
 const shot=async file=>{await sleep(250);writeFileSync(file,Buffer.from((await send('Page.captureScreenshot',{format:'png'})).data,'base64'));};
 const actions=()=>evaluate("Number(document.querySelector('#actions').textContent)");
 const last=game=>evaluate(`JSON.parse(localStorage.getItem('arc-run-v2')).games[${JSON.stringify(game)}].history.at(-1)`);
+await wait("!document.querySelector('#home').hidden",120000);
 const backup=await evaluate('JSON.stringify(Object.fromEntries(Object.entries(localStorage)))');
 writeFileSync('test-results/android/saved-state-backup.json',backup);
 const report={device:adb('shell','getprop','ro.product.model').trim(),viewport:await evaluate('[innerWidth,innerHeight]'),checks:[]};
@@ -39,6 +40,8 @@ try{
  await evaluate("localStorage.setItem('arc-settings',JSON.stringify({onboarded:true,mode:'sandbox',sound:false,haptic:true}))");
  ws.close();({ws,send}=await launchApp());
  await wait("!document.querySelector('#home').hidden",120000);assert.equal(await evaluate("document.querySelector('#launch-start')"),null);await sleep(600);
+ await scrollTap('button[data-mode="sandbox"]');
+ report.startup=await evaluate('({menuReadyMs:arcMetrics.boot.menuReadyMs,engineStillLoading:arcMetrics.boot.readyMs==null})');
  assert.equal(await evaluate("document.querySelector('.theme-toggle')"),null);report.checks.push('light-only settings');
  await tap('#sandbox-help');await wait("document.querySelector('#detail-title').textContent==='Sandbox'");adb('shell','input','keyevent','KEYCODE_BACK');await wait("!document.querySelector('#home').hidden");
  await scrollTap('[data-game="ls20"]');await wait("!document.querySelector('#detail').hidden");await tap('[data-level="2"]');await wait("!document.querySelector('#game').hidden",120000);await sleep(400);
@@ -61,9 +64,10 @@ try{
  await scrollTap('#replay-intro');await wait("!document.querySelector('#onboarding').hidden");
  await tap('#onboard-next');await sleep(350);await tap('#onboard-next');await wait("!!document.querySelector('.art-score')");await sleep(1600);await shot('test-results/android/revised-intro-score.png');
  assert.ok(await evaluate("(()=>{const bars=[...document.querySelectorAll('.bar-row b')];return bars[1].offsetWidth>bars[0].offsetWidth})()"));
- await tap('#onboard-next');await wait("!!document.querySelector('[data-pick]')");await tap('[data-pick="sandbox"]');await wait("!document.querySelector('#home').hidden");
+ await tap('#onboard-next');await wait("!!document.querySelector('#intro-go')");await tap('#intro-go');await wait("!document.querySelector('#home').hidden");
  report.checks.push('credits touch scrolling, nested license back navigation, optional intro and efficiency bars');
  await tap('button[data-mode="run"]');await sleep(600);const enabled=await evaluate("[...document.querySelectorAll('.game-card:not(:disabled)')].map(e=>e.dataset.game)");report.enabledBenchmarkCards=enabled;await shot('test-results/android/revised-benchmark.png');
+ report.startup.engineReadyMs=await evaluate('arcMetrics.boot.readyMs');
  report.errors=await evaluate('arcMetrics.errors');assert.deepEqual(report.errors,[]);report.checks.push('full info page and sequential benchmark menu');report.passed=true;
  writeFileSync('test-results/android-report.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
 }catch(error){

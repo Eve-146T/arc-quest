@@ -20,7 +20,7 @@ async function swipe(dx,dy){const r=await page.locator('#board').boundingBox(),c
 async function clickCell(a){const r=await page.locator('#board').boundingBox();await page.touchscreen.tap(r.x+(a.x+.5)/64*r.width,r.y+(a.y+.5)/64*r.height);}
 try{
  await page.goto(BASE);await expect(page.locator('#home')).toBeVisible({timeout:90000});await page.click('#about');await page.click('#replay-intro');await expect(page.locator('#onboarding')).toBeVisible();
- for(let i=0;i<3;i++)await page.click('#onboard-next');await page.click('[data-pick="sandbox"]');
+ for(let i=0;i<3;i++)await page.click('#onboard-next');await page.click('#intro-go');
  await expect(page.locator('.mode-switch button').first()).toHaveText('SANDBOX');await expect(page.locator('#record')).toBeHidden();await expect(page.locator('.game-card')).toHaveCount(25);await shot('home-sandbox');
  console.log('CHECKPOINT', new Date().toISOString());
  // Icon states are visually distinct and persist.

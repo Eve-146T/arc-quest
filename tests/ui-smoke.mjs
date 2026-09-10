@@ -8,10 +8,18 @@ const page = await browser.newPage({viewport: {width: 360, height: 640}, isMobil
 const errors = [];
 page.on('pageerror', e => errors.push(e.message));
 await page.addInitScript(() => {
-  window.AndroidGame = {haptic() {}, exportScore(json) {window.exportedScore = JSON.parse(json);}, launchReady() {window.launchWasReady = !!window.arcMetrics.boot.readyMs && !document.querySelector('#home').hidden;}};
+  window.AndroidGame = {haptic() {}, exportScore(json) {window.exportedScore = JSON.parse(json);}, launchReady() {window.launchWasReady = !document.querySelector('#home').hidden;}};
   // Hold start requests long enough to inspect loading and cancellation reliably.
   const EngineWorker = window.Worker;
   window.Worker = class extends EngineWorker {
+    constructor(...args) {
+      super(...args);
+      let heldReady, released = false;
+      this.addEventListener('message', e => {
+        if (e.data.type === 'ready' && !released) {heldReady = e.data; e.stopImmediatePropagation();}
+      });
+      window.releaseEngineReady = () => {released = true; if (heldReady) this.dispatchEvent(new MessageEvent('message', {data: heldReady}));};
+    }
     postMessage(data) {if (data.type === 'start') setTimeout(() => super.postMessage(data), 450); else super.postMessage(data);}
   };
 });
@@ -24,6 +32,7 @@ try {
   });
   await page.reload(); await expect(page.locator('#home')).toBeVisible({timeout:90000});
   await page.waitForFunction(() => window.launchWasReady);
+  assert.equal(await page.evaluate(() => window.arcMetrics.boot.readyMs), undefined, 'Menu opens without waiting for the game engine');
   await expect(page.locator('#launch-start,#launch')).toHaveCount(0);
   await expect(page.locator('#onboarding')).toBeHidden();
   await expect(page.locator('.theme-toggle')).toHaveCount(0);
@@ -74,7 +83,7 @@ try {
     for (let index = 0; index < 4; index++) {
       await page.evaluate(async i => (await import('/ui/intro.js')).onboarding(i), index);
       await page.waitForTimeout(400);
-      const clipped = await page.locator('.page h2,.page p,.page .art,.onboard-nav,.mode-card').evaluateAll(elements => elements.some(e => {
+      const clipped = await page.locator('.page h2,.page p,.page .art,.onboard-nav,#intro-go').evaluateAll(elements => elements.some(e => {
         const r = e.getBoundingClientRect(); return r.x < -.5 || r.y < -.5 || r.right > innerWidth + .5 || r.bottom > innerHeight + .5;
       }));
       assert.equal(clipped, false, `Intro ${index + 1} fits ${width}×${height}`);
@@ -82,7 +91,11 @@ try {
     }
   }
   await page.setViewportSize({width: 360, height: 640});
-  await page.click('[data-pick="sandbox"]');
+  await page.click('#intro-go');
+  await page.click('[data-mode="run"]'); await page.click('#about'); await page.click('#replay-intro');
+  await page.click('#onboard-skip'); await expect(page.locator('[data-pick]')).toHaveCount(0); await page.click('#intro-go');
+  await expect(page.locator('button[data-mode="run"]')).toHaveAttribute('aria-selected', 'true');
+  await page.click('[data-mode="sandbox"]');
   await page.click('[data-game="ls20"]');
   await expect(page.locator('[data-level="0"] .tile-score')).toContainText('91.5%');
   await expect(page.locator('[data-level="1"] .tile-score')).toContainText('115.0%');
@@ -94,9 +107,19 @@ try {
   await expect(page.locator('#home')).toBeHidden();
   await expect(page.locator('#detail')).toBeVisible();
   assert.equal(await page.locator('#app').evaluate(e => e.inert), true);
+  await expect(page.locator('#loading-preview')).toHaveAttribute('style', /ls20\/1.png/);
+  for (const [width, height] of [[320,568], [568,320]]) {
+    await page.setViewportSize({width,height});
+    const box = await page.locator('.loading-sheet').boundingBox();
+    assert.ok(box.x >= 0 && box.y >= 0 && box.x + box.width <= width && box.y + box.height <= height, 'Puzzle loader fits the viewport');
+    await page.waitForTimeout(250);
+    await page.screenshot({path:`test-results/loading-${width}x${height}.png`});
+  }
+  await page.setViewportSize({width:360,height:640});
   await page.evaluate(() => window.arcBack());
   await expect(page.locator('#loading')).toBeHidden();
   await expect(page.locator('#detail-title')).toHaveText('LS20');
+  await page.evaluate(() => window.releaseEngineReady());
   await page.waitForFunction(() => window.arcMetrics.boot.readyMs != null, null, {timeout: 90000});
   await page.waitForTimeout(700);
   await expect(page.locator('#game')).toBeHidden();

@@ -39,7 +39,7 @@ h1,h2,h3,p{margin:0}
 .white{background:var(--card);--lip:var(--neutral-lip)}
 .lavender{background:var(--lavender);--lip:#8979ad}
 .berry{background:var(--berry);--lip:#b0284a;color:#fff}
-.chunk:active,.chip:active,.game-card:active,.mode-card:active{transform:translateY(5px);box-shadow:0 1px 0 var(--lip)}
+.chunk:active,.chip:active,.game-card:active{transform:translateY(5px);box-shadow:0 1px 0 var(--lip)}
 .text-button{padding:13px;font-size:17px;font-weight:550;text-decoration:underline;text-underline-offset:3px}
 
 /* White pills carry numbers (score, actions, target). */

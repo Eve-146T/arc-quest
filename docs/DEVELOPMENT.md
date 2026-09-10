@@ -82,10 +82,10 @@ For local release signing, export `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALI
 
 ## Startup, icons and input regions
 
-Startup waits for the worker to report ready, renders home, and signals the native splash to fade out after the WebView’s first visual frame. There is no second launch screen or start button. The intro is available from Info only.
+Startup launches the worker in parallel with menu metadata, renders home immediately, and signals the native splash to fade out after fonts and the WebView’s first visual frame are ready. Game engine initialization continues while the menu, level browser and Info are usable. A level opened before engine readiness shows an animated preview until its first real frame arrives; Back cancels that pending request. There is no second launch screen or start button. The intro is available from Info only.
 
 `uv run scripts/icons.py` generates matching vector launcher, monochrome and animated splash artwork. `node scripts/icon-previews.mjs` exports the two PNG sizes and renders circle/squircle/rounded-square/themed evidence. Geometry follows the [Android adaptive-icon safe-area guidance](https://developer.android.com/develop/ui/compose/system/icon_design_adaptive); foreground layers have no pre-baked outer mask.
 
 FT09 exposes a cached per-level hit mask from its original camera mapping and target sprites. The UI ignores taps outside that mask. The bridge still passes raw actions through unchanged so historical replays and reference parity stay intact.
 
-The Android manifest is the CI artifact version source: versionName `0.1`, versionCode `2`, package `org.arcquest.game`. Node/Python metadata use the corresponding semantic version `0.1.0`.
+The Android manifest is the CI artifact version source: versionName `0.1`, versionCode `3`, package `org.arcquest.game`. Node/Python metadata use the corresponding semantic version `0.1.0`.
