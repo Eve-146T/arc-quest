@@ -1,9 +1,10 @@
 # Releases and F-Droid
 
 The repository is public at [Eve-146T/arc-quest](https://github.com/Eve-146T/arc-quest).
-[Version 1.0](https://github.com/Eve-146T/arc-quest/releases/tag/v1.0) is published
-with an Eve-signed APK. Version 1.0.1 (version code 5) adds the runtime source build
-and reproducible APK packaging needed for the F-Droid submission.
+[Version 1.0.1](https://github.com/Eve-146T/arc-quest/releases/tag/v1.0.1) is published
+with an Eve-signed APK (version code 5). Its runtime builds from pinned sources,
+and independent GitHub/local APK builds passed signature-copy reproducibility
+checks. The original version 1.0 release remains available unchanged.
 
 ## Store listing
 

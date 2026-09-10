@@ -88,3 +88,11 @@ Version `1.0`, code `4`, locks the `arc.quest` activity to portrait. The propose
 - Independent output comparison exposed filesystem-dependent Emscripten port link order and build paths in CPython, NumPy configuration and the pydantic-core SBOM. The build now sorts ports, fixes CPython's compiled prefix and normalizes generated metadata while recalculating wheel RECORD checksums. The lock file excludes unused test archives.
 - A clean local CPython rebuild passed. All 825 reference states across 25 games and the complete WebView UI suite passed with the rebuilt runtime.
 - The loader is rebuilt on cached runs so its build ID tracks the current WebAssembly. Independent CI comparison and F-Droid release/submission remain pending until their actual results are recorded.
+
+### Published source-built release 1.0.1
+
+- Independent source build: GitHub Actions run `34516555805` passed, including exact comparison of every generated runtime asset against the committed files.
+- Release tag `v1.0.1` points to `f108dca`; tagged workflow `34518007066` passed and published `arc-quest-v1.0.1.apk`.
+- The downloaded release APK has Eve's expected SHA-256 signing certificate `2fe09f50180d92e3b3204992ffc9a8c598087b9a7bac0b12d3f23a1e3687fd7f`.
+- `apksigcopier compare --unsigned` passed for the independent CI APK against both the local review-signed APK and the published Eve-signed APK.
+- The enabled F-Droid recipe pins the full released commit. Its schema, formatting and local F-Droid lint checks pass. F-Droid's own pipeline and maintainer acceptance are tracked separately.
