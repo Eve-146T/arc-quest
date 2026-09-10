@@ -202,7 +202,8 @@ function play(config) {
   closeGameOverlay(); cancelGesture(); feedback(); session = {...config, attempt: 0}; loadingGame = true;
   $('#loading-title').textContent = `Opening ${config.game.toUpperCase()}…`;
   const level = config.sandbox ? config.level : runGame(config.game)?.summary?.levels_completed ?? 0;
-  $('#loading-preview').style.setProperty('--preview', `url("./assets/levels/${config.game}/${level + 1}.png")`);
+  const preview = new URL(`./assets/levels/${config.game}/${level + 1}.png`, document.baseURI);
+  $('#loading-preview').style.setProperty('--preview', `url("${preview.href}")`);
   $('#loading').hidden = false; $('#app').inert = true;
   $('#cancel-loading').focus({preventScroll: true});
   if (bootError) {worker?.terminate(); startWorker();}

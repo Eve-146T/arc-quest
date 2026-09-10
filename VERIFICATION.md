@@ -2,7 +2,7 @@
 
 Verified 2026-09-10. Android version **0.1**, versionCode **3**, package **org.arcquest.game**. The original checkout is preserved in commit `6dd0b23`.
 
-Review build: [Android APK](https://apps.muxu.click/d/t2b5t64y). The repository remains private. [Android launch recording](https://apps.muxu.click/d/v736svdi). [Adaptive icon shapes](https://apps.muxu.click/d/2hdy6d2y). [Intro finale](https://apps.muxu.click/d/3y33xa94).
+Review build: [Android APK](https://apps.muxu.click/d/yav8ww4s). The repository remains private. [Android launch recording](https://apps.muxu.click/d/v736svdi). [Adaptive icon shapes](https://apps.muxu.click/d/2hdy6d2y). [Intro finale](https://apps.muxu.click/d/3y33xa94).
 
 ## Current behavior
 

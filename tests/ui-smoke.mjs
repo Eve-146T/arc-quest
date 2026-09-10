@@ -108,6 +108,10 @@ try {
   await expect(page.locator('#detail')).toBeVisible();
   assert.equal(await page.locator('#app').evaluate(e => e.inert), true);
   await expect(page.locator('#loading-preview')).toHaveAttribute('style', /ls20\/1.png/);
+  assert.ok(await page.locator('#loading-preview i').first().evaluate(e => new Promise(resolve => {
+    const img = new Image(); img.onload = () => resolve(img.naturalWidth === 64); img.onerror = () => resolve(false);
+    img.src = getComputedStyle(e).backgroundImage.slice(5,-2);
+  })), 'The loading mosaic must display the actual level preview');
   for (const [width, height] of [[320,568], [568,320]]) {
     await page.setViewportSize({width,height});
     const box = await page.locator('.loading-sheet').boundingBox();
