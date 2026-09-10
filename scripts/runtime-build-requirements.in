@@ -1,0 +1,10 @@
+# Build tooling only; none of these native host packages ship in the APK.
+-e vendor/pyodide/pyodide-build
+typer==0.15.4
+click==8.1.8
+cmake==3.31.10
+pip==26.2.1
+setuptools==84.0.0
+hatchling==1.28.0
+hatch-vcs==0.5.0
+editables==0.5

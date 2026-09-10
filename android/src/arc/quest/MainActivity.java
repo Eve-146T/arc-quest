@@ -23,7 +23,7 @@ public final class MainActivity extends Activity {
         WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);
         s.setAllowFileAccess(false);s.setAllowContentAccess(false);s.setMediaPlaybackRequiresUserGesture(false);
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);s.setSupportZoom(false);
-        s.setUserAgentString(s.getUserAgentString()+" ArcQuestAndroid/1.0");
+        s.setUserAgentString(s.getUserAgentString()+" ArcQuestAndroid/1.0.1");
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
         web.addJavascriptInterface(new NativeActions(),"AndroidGame");
         web.setWebViewClient(new WebViewClient(){

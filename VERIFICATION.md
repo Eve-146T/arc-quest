@@ -70,3 +70,14 @@ Version `1.0`, code `4`, locks the `arc.quest` activity to portrait. The propose
 
 
 `tests/android-portrait.mjs` passed on the Moto G7 Power: home, level browser, gameplay and Info remained 360×760 with user rotation set to 0, 1 and 3. Puzzle pixels stayed unchanged. The test restored rotation settings and app saves. Debug and release-mode portrait APKs build successfully; native manifest inspection reports `screenOrientation=1` (portrait). Evidence is in `test-results/portrait/`.
+
+## F-Droid source-build preparation (1.0.1 / code 5)
+
+- Built Pyodide 0.29.3/CPython 3.13.2, NumPy 2.2.5 and pydantic-core 2.41.5 from pinned upstream sources. The four pure Python dependency wheels also come from their pinned source recipes. `scripts/build-runtime.sh` completed locally.
+- Verified the newly vendored engine/scoring `.py` files against the pinned upstream installations. Game sources remain unchanged and are checked against their recorded SHA-256 hashes when packaging.
+- Both the initial source-built runtime and the final runtime with normalized compiler paths passed all 825 reference states across 25 games, checking frames, actions, state, completion and scoring. The final WebView UI smoke test passed, including credits navigation, FT09 hit testing, startup and intro layout/animations. Node scoring/progress tests passed.
+- The runtime packager produced byte-identical archives across independent invocations. No local home paths remain in the compiled extension binaries.
+- Two local APK builds, including one invoked with a different timezone, passed `apksigcopier compare --unsigned` against a review-signed build. Fixed dex timestamps/permissions, removed ZIP uid/gid metadata, and preserved alignment during signing. This local check uses the review certificate; verification against the published Eve-signed release is a separate release check.
+- Current fdroiddata schema, `fdroid lint` and YAML formatting checks passed for the prepared recipe. Current fdroidserver source scanning passed with zero findings after the recipe's removals, without scanignore/scandelete exceptions. Removed inputs are the previously bundled runtime archives and unused upstream test fixtures; production runtime binaries are compiled after scanning.
+- Store metadata validates for 1.0.1/code 5, with the existing four screenshots. README copy and prior deletions remain unchanged.
+- Independent GitHub source-build verification, publication of 1.0.1 and the actual F-Droid build/submission pipeline are still pending at this commit. The local recipe stays disabled until the published release commit can be inserted.

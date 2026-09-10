@@ -1,0 +1,9 @@
+# Isolated build backends used by the six pinned Pyodide package recipes.
+Cython>=3.0.6
+meson-python>=0.15.0
+maturin>=1.9.4,<2
+flit-core>=3.11,<4
+hatchling==1.28.0
+hatch-fancy-pypi-readme
+ninja
+cmake==3.31.10

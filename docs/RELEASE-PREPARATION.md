@@ -1,48 +1,43 @@
-# Release preparation — review draft
+# Releases and F-Droid
 
-The user-edited listing, portrait change and validation checks are prepared for version 1.0 in the private Eve-146T/arc-quest repository. The annotated `v1.0` tag is prepared locally after checks pass. Pushing that tag would trigger the release workflow, so it remains local until publication is approved. No signing-secret change, repository visibility change or F-Droid submission has been made.
+The repository is public at [Eve-146T/arc-quest](https://github.com/Eve-146T/arc-quest).
+[Version 1.0](https://github.com/Eve-146T/arc-quest/releases/tag/v1.0) is published
+with an Eve-signed APK. Version 1.0.1 (version code 5) adds the runtime source build
+and reproducible APK packaging needed for the F-Droid submission.
 
-## Edit these files
+## Store listing
 
-| Content | Location |
-| --- | --- |
-| Store name | [title.txt](../fastlane/metadata/android/en-US/title.txt) |
-| Short description, up to 80 characters | [short_description.txt](../fastlane/metadata/android/en-US/short_description.txt) |
-| Full description | [full_description.txt](../fastlane/metadata/android/en-US/full_description.txt) |
-| Release notes | [changelogs/4.txt](../fastlane/metadata/android/en-US/changelogs/4.txt) |
-| Store icon, 512 × 512 | [icon.png](../fastlane/metadata/android/en-US/images/icon.png) |
-| Four portrait screenshots | [phoneScreenshots](../fastlane/metadata/android/en-US/images/phoneScreenshots) |
-| Disabled F-Droid recipe | [arc.quest.yml](../fdroid/arc.quest.yml) |
+The user-edited listing is in `fastlane/metadata/android/en-US/`: title, short and
+full descriptions, versioned changelogs, the 512px icon and exactly four portrait
+screenshots. The README and its deletions are preserved. Run
+`node scripts/check-metadata.mjs` to validate the listing without modifying it.
 
-The images are the existing app icon and four README captures: Sandbox, level browser, FT09 gameplay, and a completed level. Their boards are real engine renders; some saved-progress examples are seeded fixtures, as recorded in `VERIFICATION.md`. Edit or replace the listing assets directly; the validation command never overwrites them. The README remains as you edited it.
+The screenshots show Sandbox, the level browser, FT09 gameplay and a completed
+level. Boards are real engine renders; saved-progress examples are seeded
+fixtures, as recorded in `VERIFICATION.md`.
 
 ## Release identity
 
 - Package: `arc.quest`.
-- Version: `1.0`; version code: `4` (increased for the portrait-only APK).
-- Prepared local tag: `v1.0`.
-- Intended release asset: `arc-quest-v1.0.apk`.
-- App license: `AGPL-3.0-only`; third-party license notices remain bundled.
-- Signing certificate: `2fe09f50180d92e3b3204992ffc9a8c598087b9a7bac0b12d3f23a1e3687fd7f`.
+- License: `AGPL-3.0-only`; third-party components retain their own licenses.
+- APK name: `arc-quest-v<version>.apk`.
+- Eve signing certificate SHA-256:
+  `2fe09f50180d92e3b3204992ffc9a8c598087b9a7bac0b12d3f23a1e3687fd7f`.
 
-## Local validation
+Release tags must match `android:versionName`. Signing secrets are configured in
+GitHub Actions. The release workflow first builds the runtime from pinned sources,
+checks it against the bundled assets, builds the APK and signs that artifact.
+It then creates the GitHub release. Published tags and assets are not replaced.
 
-```sh
-node scripts/check-metadata.mjs
-bash -n scripts/build-android.sh
-ARC_DEBUG=1 scripts/build-android.sh
-```
+## F-Droid
 
-Use JDK 17 and Android platform/build-tools 35. Metadata validation checks text limits, the current version's changelog, icon dimensions, four portrait PNGs, package ID and portrait orientation. CI runs this check on pushes. It does not upload store metadata. Local text/image checks, current fdroiddata schema validation and native portrait rotation checks have passed. F-Droid lint/build and reproducibility checks remain pending.
+The recipe lives in `fdroid/arc.quest.yml`. This app uses a Java/AAPT2/D8 build at
+the repository root, with `output` selecting the unsigned APK; there is no Gradle
+`app/` subproject. The recipe must point at a released commit's full SHA, with
+matching version/code and a downloadable signed APK.
 
-## Work still required before submission
-
-1. The user-edited listing, code and fastlane files must stay together at the release commit. If anything changes after preparing `v1.0`, update the local tag to the newly reviewed commit before publishing it.
-2. Review the bundled runtime's provenance and F-Droid build approach. `public/runtime/` includes Pyodide/WebAssembly and compiled Python wheels; `scripts/prepare.py` also adds Python bytecode. The current Android script packages these assets. It does not prove an accepted source build of the runtime. Review exact sources, versions, hashes and any needed rebuild or permitted dependency path. Do not use broad scanner exceptions to hide this work. F-Droid's [inclusion policy](https://f-droid.org/docs/Inclusion_Policy/) describes the dependency requirements and permitted sources.
-3. Verify the manual build on the F-Droid VM, including SDK 35 provisioning. The recipe uses the actual repository-root build script and unsigned output; this app has no Gradle `app/` subproject. `output` selects a manual build in the [metadata reference](https://f-droid.org/docs/Build_Metadata_Reference/).
-4. Check reproducibility from independent clean checkouts, including archive timestamps, packaged assets and any generated bytecode. Compare the F-Droid result against the eventual shared-key signed APK. This has not been established yet.
-5. After explicit approval to release, configure the four Eve signing secrets and verify the certificate. The playbook's `setup-signing.sh` also pushes a tag: do not run it merely to prepare secrets. Publish the source and release only when authorized.
-6. Replace `REPLACE_WITH_REVIEWED_RELEASE_COMMIT` with the full 40-character SHA that includes the approved fastlane files. Keep version/code and the release filename aligned. Remove the draft disables only after the remaining checks pass; then switch auto-update to `Version` and update checking to `Tags`.
-7. Validate with current fdroiddata schema/lint and a real F-Droid build. After your approval, submit using the upstream app-inclusion template. No MR or draft release has been created.
-
-The category `Puzzle Game` was checked against the [official categories](https://gitlab.com/fdroid/fdroiddata/-/blob/master/config/categories.yml). No Summary/Description fields duplicate fastlane copy in the recipe. Existing README download links remain placeholders until releases and a listing exist.
+[Runtime build documentation](RUNTIME-BUILD.md) records the pinned source path.
+F-Droid removes committed runtime binaries before scanning and rebuilds them.
+Its recipe uses no scanner exceptions. Source schema/lint, the actual F-Droid
+build and APK signature-copy verification must pass before inclusion is ready.
+F-Droid maintainers control acceptance and when the app appears in the catalogue.

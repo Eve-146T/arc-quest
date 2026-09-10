@@ -83,9 +83,55 @@ jobs:
           path: android/build/arc-quest.apk
           if-no-files-found: error
 
+  runtime:
+    if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - run: mkdir -p .scratch
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: '0.11.2'
+          python-version: '3.13.2'
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+      - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Install runtime compiler prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential autoconf automake libtool pkg-config cmake ccache zip wget texinfo
+      - name: Build runtime from pinned sources
+        run: bash scripts/build-runtime.sh
+      - name: Verify bundled runtime matches the source build
+        run: git diff --exit-code -- public/runtime public/engine.zip public/licenses
+      - name: Build unsigned APK
+        run: bash scripts/build-android.sh
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: arc-quest-runtime-source
+          path: |
+            public/runtime
+            public/engine.zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: arc-quest-source-unsigned
+          path: android/build/arc-quest-unsigned.apk
+          if-no-files-found: error
+
   release:
     if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
-    needs: checks
+    needs: [checks, runtime]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -103,6 +149,10 @@ jobs:
           java-version: '17'
       - uses: android-actions/setup-android@v4
       - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - uses: actions/download-artifact@v8
+        with:
+          name: arc-quest-source-unsigned
+          path: android/build
       - name: Check release tag and metadata
         run: node scripts/check-metadata.mjs "$GITHUB_REF_NAME"
       - name: Decode signing keystore
@@ -123,7 +173,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          scripts/build-android.sh
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --alignment-preserved true --ks "$KEYSTORE_FILE" --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD --ks-key-alias "$KEY_ALIAS" --out android/build/arc-quest.apk android/build/arc-quest-unsigned.apk
           certificate=$("$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs android/build/arc-quest.apk)
           if ! echo "$certificate" | grep -q 'SHA-256 digest: 2fe09f50180d92e3b3204992ffc9a8c598087b9a7bac0b12d3f23a1e3687fd7f'; then
             echo '::error::Release APK does not use the shared Eve signing certificate.' >&2

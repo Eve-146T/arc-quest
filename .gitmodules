@@ -1,0 +1,6 @@
+[submodule "vendor/pyodide"]
+	path = vendor/pyodide
+	url = https://github.com/pyodide/pyodide.git
+[submodule "vendor/pyodide-recipes"]
+	path = vendor/pyodide-recipes
+	url = https://github.com/pyodide/pyodide-recipes.git

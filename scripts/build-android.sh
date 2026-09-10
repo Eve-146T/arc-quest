@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 022
+export TZ=UTC
 cd "$(dirname "$0")/.."
 export TMPDIR="$PWD/.scratch"
 mkdir -p "$TMPDIR" android/build/classes android/build/dex android/build/generated
@@ -26,7 +28,11 @@ javac --release 8 -classpath "$PLATFORM" -d android/build/classes android/src/ar
 jar cf android/build/classes.jar -C android/build/classes .
 "$BUILD_TOOLS/d8" --lib "$PLATFORM" --min-api 26 --output android/build/dex android/build/classes.jar
 cp android/build/resources.apk android/build/unsigned.apk
-(cd android/build/dex && zip -q ../unsigned.apk classes.dex)
+# ZIP otherwise embeds build time, timezone and the builder's uid/gid. Keep the
+# APK identical across local, GitHub Actions and F-Droid builds.
+touch -t 198001010000 android/build/dex/classes.dex
+chmod 644 android/build/dex/classes.dex
+(cd android/build/dex && zip -X -q ../unsigned.apk classes.dex)
 "$BUILD_TOOLS/zipalign" -f 4 android/build/unsigned.apk android/build/arc-quest-unsigned.apk
 if [ "${ARC_DEBUG:-0}" = "1" ] || [ "${ARC_REVIEW:-0}" = "1" ]; then
     # This key is only for local review and CI debug artifacts, never tagged releases.
@@ -37,7 +43,7 @@ if [ "${ARC_DEBUG:-0}" = "1" ] || [ "${ARC_REVIEW:-0}" = "1" ]; then
 fi
 if [ -n "${KEYSTORE_FILE:-}" ]; then
     : "${KEYSTORE_PASSWORD:?Missing keystore password}" "${KEY_ALIAS:?Missing key alias}" "${KEY_PASSWORD:?Missing key password}"
-    "$BUILD_TOOLS/apksigner" sign --ks "$KEYSTORE_FILE" --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD --ks-key-alias "$KEY_ALIAS" --out android/build/arc-quest.apk android/build/arc-quest-unsigned.apk
+    "$BUILD_TOOLS/apksigner" sign --alignment-preserved true --ks "$KEYSTORE_FILE" --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD --ks-key-alias "$KEY_ALIAS" --out android/build/arc-quest.apk android/build/arc-quest-unsigned.apk
     "$BUILD_TOOLS/apksigner" verify android/build/arc-quest.apk
     ls -lh android/build/arc-quest.apk
 else

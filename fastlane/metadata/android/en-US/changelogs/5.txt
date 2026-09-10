@@ -1,0 +1,4 @@
+F-Droid build preparation:
+- Build the offline Python runtime and its dependencies from pinned sources.
+- Make APK packaging reproducible across build machines.
+- Include offline Python and Pyodide license texts.

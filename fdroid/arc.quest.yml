@@ -1,5 +1,4 @@
-# Review draft only. Replace the commit after the listing and release code are final.
-Disabled: Release preparation and F-Droid build verification are not complete
+Disabled: Pending v1.0.1 source-build verification and release
 Categories:
   - Puzzle Game
 License: AGPL-3.0-only
@@ -7,43 +6,59 @@ AuthorName: Eve-146T
 SourceCode: https://github.com/Eve-146T/arc-quest
 IssueTracker: https://github.com/Eve-146T/arc-quest/issues
 Changelog: https://github.com/Eve-146T/arc-quest/releases
+
 AutoName: ARC Quest
+
 RepoType: git
 Repo: https://github.com/Eve-146T/arc-quest.git
 Binaries: https://github.com/Eve-146T/arc-quest/releases/download/v%v/arc-quest-v%v.apk
 
 Builds:
-  - versionName: '1.0'
-    versionCode: 4
-    disable: Draft awaiting review, runtime provenance and reproducibility checks
-    commit: REPLACE_WITH_REVIEWED_RELEASE_COMMIT
+  - versionName: 1.0.1
+    versionCode: 5
+    commit: '0000000000000000000000000000000000000000'
+    submodules: true
     sudo:
+      - echo "deb https://deb.debian.org/debian bookworm main" > /etc/apt/sources.list.d/arc-quest-jdk17.list
+      - echo "deb https://security.debian.org/debian-security bookworm-security main" >> /etc/apt/sources.list.d/arc-quest-jdk17.list
       - apt-get update
-      - apt-get install -y --no-install-recommends openjdk-17-jdk-headless nodejs zip
+      - apt-get install -y --no-install-recommends openjdk-17-jdk-headless nodejs npm zip build-essential autoconf automake libtool pkg-config cmake ccache wget curl texinfo rustup
+      - curl -L --fail -o uv.tar.gz https://github.com/astral-sh/uv/releases/download/0.11.2/uv-x86_64-unknown-linux-gnu.tar.gz
+      - echo '7ac2ca0449c8d68dae9b99e635cd3bc9b22a4cb1de64b7c43716398447d42981  uv.tar.gz' | sha256sum -c -
+      - tar -xzf uv.tar.gz --strip-components=1 -C /usr/local/bin uv-x86_64-unknown-linux-gnu/uv
+      - rm uv.tar.gz
     output: android/build/arc-quest-unsigned.apk
+    rm:
+      - public/runtime
+      - public/engine.zip
+      - vendor/pyodide/src/tests
+      - vendor/pyodide/packages/micropip/test
+      - vendor/pyodide/packages/test-rust-abi
+      - vendor/pyodide/packages/test-rust-panic
+      - vendor/pyodide/pyodide-build/integration_tests
+      - vendor/pyodide/pyodide-build/pyodide_build/tests
+      - vendor/pyodide-recipes/packages/micropip/test
     build:
       - export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
       - export PATH="$JAVA_HOME/bin:$PATH"
       - export ANDROID_SDK_ROOT=$$SDK$$
-      - test -f "$ANDROID_SDK_ROOT/platforms/android-35/android.jar"
-      - test -x "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt2"
+      - sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - bash scripts/build-runtime.sh
       - ARC_DEBUG=0 ARC_REVIEW=0 ARC_RELEASE=0 bash scripts/build-android.sh
 
 MaintainerNotes: |-
-    Local, disabled draft. This is a Java WebView shell with a manual AAPT2 build,
-    not a Gradle/libGDX app. Build from the repository root using JDK 17 and SDK 35.
-    The commands above package the currently bundled runtime; they do not yet
-    establish an accepted source-build path for its WebAssembly/Python binaries.
-    Review Pyodide, CPython, NumPy, pydantic-core, repacked wheels and generated
-    bytecode provenance before enabling. No scanner exceptions are asserted.
-    Verify the SDK packages are provisioned on the F-Droid build VM.
-    Replace the commit with the reviewed release's full 40-character SHA.
-    Confirm byte-reproducibility against an Eve-signed release APK and verify
-    the certificate below. The repository is private and has no release yet.
-    Set AutoUpdateMode to Version and UpdateCheckMode to Tags only when ready.
+    Java WebView shell with a manual AAPT2/D8 build from the repository root.
+    No Gradle subproject. The app runs all games offline; it is not a website wrapper.
+    The bundled runtime is removed before scanning and rebuilt from pinned Pyodide
+    and pyodide-recipes submodules. These compile CPython 3.13.2, NumPy 2.2.5 and
+    pydantic-core 2.41.5 to WebAssembly. Game/engine archives and Python bytecode are
+    generated from source by scripts/package-runtime.py. There are no scanignore
+    exceptions. Only upstream test fixtures are removed from the submodules.
+    Build tooling includes uv 0.11.2, Emscripten 4.0.9 and Pyodide's pinned Rust
+    nightly/sysroot. See docs/RUNTIME-BUILD.md for sources and reproducibility.
 
 AllowedAPKSigningKeys: 2fe09f50180d92e3b3204992ffc9a8c598087b9a7bac0b12d3f23a1e3687fd7f
-AutoUpdateMode: None
-UpdateCheckMode: None
-CurrentVersion: '1.0'
-CurrentVersionCode: 4
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+CurrentVersion: 1.0.1
+CurrentVersionCode: 5
