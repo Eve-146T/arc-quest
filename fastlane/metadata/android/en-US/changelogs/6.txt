@@ -1,0 +1,1 @@
+Remove the unnecessary internet permission. ARC Quest continues to run entirely from bundled offline assets.

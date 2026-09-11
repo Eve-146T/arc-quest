@@ -171,10 +171,10 @@ function showLoadError(error) {
 
 // ---- engine worker
 function startWorker() {
-  worker = new Worker('./engine-worker.js'); ready = false; bootError = null; metrics.boot.startedAt = performance.now();
+  worker = new Worker('./engine-worker.js'); ready = false; bootError = null; metrics.boot.startedAt = performance.now(); metrics.boot.phases = [];
   worker.onmessage = ({data}) => {
-    if (data.type === 'loading') {$('#loading-text').textContent = data.text; $('#loading-progress').style.width = `${data.progress}%`;}
-    if (data.type === 'ready') {ready = true; metrics.boot.readyMs = performance.now() - metrics.boot.startedAt; $('#loading-progress').style.width = '100%'; if (loadingGame) beginSession();}
+    if (data.type === 'loading') {metrics.boot.phases.push({text:data.text, elapsedMs:data.elapsedMs}); $('#loading-text').textContent = data.text; $('#loading-progress').style.width = `${data.progress}%`;}
+    if (data.type === 'ready') {ready = true; metrics.boot.workerReadyMs = data.elapsedMs; metrics.boot.readyMs = performance.now() - metrics.boot.startedAt; $('#loading-progress').style.width = '100%'; if (loadingGame) beginSession();}
     if (data.type === 'warm') metrics.boot.warm = data;
     if (data.type === 'result') {
       const req = pending.get(data.requestId); pending.delete(data.requestId); if (!req) return;

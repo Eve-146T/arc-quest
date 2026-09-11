@@ -41,7 +41,7 @@ try{
  ws.close();({ws,send}=await launchApp());
  await wait("!document.querySelector('#home').hidden",120000);assert.equal(await evaluate("document.querySelector('#launch-start')"),null);await sleep(600);
  await scrollTap('button[data-mode="sandbox"]');
- report.startup=await evaluate('({menuReadyMs:arcMetrics.boot.menuReadyMs,engineStillLoading:arcMetrics.boot.readyMs==null})');
+ report.startup=await evaluate('({menuReadyMs:arcMetrics.boot.menuReadyMs,engineStillLoading:arcMetrics.boot.readyMs==null,phases:arcMetrics.boot.phases})');
  assert.equal(await evaluate("document.querySelector('.theme-toggle')"),null);report.checks.push('light-only settings');
  await tap('#sandbox-help');await wait("document.querySelector('#detail-title').textContent==='Sandbox'");adb('shell','input','keyevent','KEYCODE_BACK');await wait("!document.querySelector('#home').hidden");
  await scrollTap('[data-game="ls20"]');await wait("!document.querySelector('#detail').hidden");await tap('[data-level="2"]');await wait("!document.querySelector('#game').hidden",120000);await sleep(400);
@@ -67,7 +67,7 @@ try{
  await tap('#onboard-next');await wait("!!document.querySelector('#intro-go')");await tap('#intro-go');await wait("!document.querySelector('#home').hidden");
  report.checks.push('credits touch scrolling, nested license back navigation, optional intro and efficiency bars');
  await tap('button[data-mode="run"]');await sleep(600);const enabled=await evaluate("[...document.querySelectorAll('.game-card:not(:disabled)')].map(e=>e.dataset.game)");report.enabledBenchmarkCards=enabled;await shot('test-results/android/revised-benchmark.png');
- report.startup.engineReadyMs=await evaluate('arcMetrics.boot.readyMs');
+ Object.assign(report.startup,await evaluate('({engineReadyMs:arcMetrics.boot.readyMs,workerReadyMs:arcMetrics.boot.workerReadyMs,phases:arcMetrics.boot.phases})'));
  report.errors=await evaluate('arcMetrics.errors');assert.deepEqual(report.errors,[]);report.checks.push('full info page and sequential benchmark menu');report.passed=true;
  writeFileSync('test-results/android-report.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
 }catch(error){

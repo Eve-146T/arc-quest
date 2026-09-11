@@ -1,17 +1,19 @@
 let engine;
 let pending = 0;
 const boot = async () => {
-  postMessage({type:'loading', text:'Waking up the arcade…', progress:12});
+  const startedAt = performance.now();
+  const loading = (text, progress) => postMessage({type:'loading', text, progress, elapsedMs:performance.now() - startedAt});
+  loading('Waking up the arcade…', 12);
   const archive = fetch('./engine.zip').then(response => response.arrayBuffer());
   const adapter = fetch('./bridge.py').then(response => response.text());
   importScripts('./runtime/pyodide.js');
   engine = await loadPyodide({indexURL: new URL('./runtime/', self.location).href, packages:['numpy','pydantic']});
-  postMessage({type:'loading', text:'Unpacking the puzzles…', progress:45});
+  loading('Unpacking the puzzles…', 45);
   engine.unpackArchive(await archive,'zip',{extractDir:'/app'});
   engine.runPython("import sys; sys.path.insert(0, '/app')");
-  postMessage({type:'loading', text:'Almost ready to play…', progress:88});
+  loading('Almost ready to play…', 88);
   await engine.runPythonAsync(await adapter);
-  postMessage({type:'ready'});
+  postMessage({type:'ready', elapsedMs:performance.now() - startedAt});
   prewarm();
 };
 // Importing a game module costs far more than playing it, so once the adapter is ready we
